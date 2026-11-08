@@ -11,8 +11,11 @@ QoL patches for **Harvest Moon: More Friends of Mineral Town (USA)** with **True
 | `MFoMT Stamina HUD (apply after TLE v4.0).ips` | Our patch. Apply it after TLE. |
 | `MFoMT Grind Reduction (apply after TLE v4.0).ips` | Our port of the Proofread grind-reduction tweaks. |
 | `MFoMT Free Basket (apply after TLE v4.0).ips` | The free basket on its own. |
+| `MFoMT Fast Tool Upgrades (apply after TLE v4.0).ips` | Every blacksmith upgrade takes 1 day. |
+| `MFoMT Fast Tool XP (apply after TLE v4.0).ips` | Tools gain 5× XP. |
 | `Harvest Moon - MFoMT (TLE v4.0 + Stamina HUD).gba` / `.sav` | The ROM the user plays (TLE + HUD + grind reduction; the filename was kept so the save stays linked) and **the user's real save**. Never overwrite the `.sav`; copy it for testing. |
 | `….ss1` / `….ss2`, `Harvest Moon - More Friends of Mineral Town (USA).sav` | The user's mGBA save states and a save for the clean ROM. Keep them; copy before loading for debugging. |
+| `test/test.gba` + `test/test.sav` | Test copy: TLE + all our patches, with a save converted from `harvest-moon-more-friends-of-mineral-town.8984.sps` (SharkPort; the first 32 KB of its payload after a 0x1C-byte header is the `.sav`). The vanilla 2005 save is at Fall 26, Year 1, with 99.9M G, 5 cows, 4 chickens and 3 sheep. Use this for testing instead of the user's real save. Rebuild `test.gba` from `qol.gba` when patches change. |
 | `tools/` | Build and debug scripts (described below). |
 
 ## User preferences
@@ -30,6 +33,8 @@ QoL patches for **Harvest Moon: More Friends of Mineral Town (USA)** with **True
   - Clock hook: the 14 bytes at `0x08017FC6` become `ldr r0,[pc,#4]; bx r0` → `0x089DA800`, which looks up the threshold and jumps back to `0x080180B3` / `0x08017FDD`. Verified live: rolls over at 50 ticks when set to 2×.
   - Key filter: the game's key-read function `0x08009194` → `0x089DA880` hides Select while L is held (Select alone opens the Property screen). It reads KEYINPUT through the literal at `0x080091A0`, which is kept, so `drive2.py`'s redirect still works. The HUD hook reads keys the same way.
   - HUD state lives in RAM at `0x0203FFF0` (u16 previous keys, u8 popup timer), at the top of EWRAM, which appears unused.
+- **Fast tool upgrades:** in `tools/upgrades.py`. Every upgrade takes 1 day. Checked in unicorn for every tool level and ore, and verified in game (2026-11-09): an Axe upgraded with Mystrile on Wednesday was ready Thursday (the shop is closed Thursdays, so it was picked up Friday).
+- **Fast tool XP:** in `tools/toolxp.py`. ×5 (the user's choice). It rewrites the XP adder in place. Verified in game: four Hammer swings (three at rocks, one at the ground) took 29900 to 30900.
 - **Free basket:** in `tools/basket.py`, shipped as its own `.ips`. The Supermarket basket costs 0G instead of 5,000G. Built, but not yet tested by buying it in game.
 
 ## Key game facts (TLE ROM addresses)
@@ -45,6 +50,14 @@ QoL patches for **Harvest Moon: More Friends of Mineral Town (USA)** with **True
   - Opcodes: `23 xx` push imm8, `22 xxxx` push imm16, `13 xxxxxxxx` push imm32, `21 xxxxxxxx` call native, `12` compare, `1b`/`1d` conditional jump (absolute offset), `18` jump, `0d` logical and.
   - Natives: `0x3E` getvar, `0x3F` setvar, `0x22` show message n, `0xEF` get money, `0xF1` pay, `0x73` give basket, `0x74` has basket(?).
   - The native function table hasn't been located yet. (The table at `0x080F0348` is AI state handlers, not it.)
+- **Blacksmith tool upgrades** (native menu code, not a script):
+  - Days: `0x08096384(_, tool, ore)` returns the target level minus the current level (tool & 7; ore item `0x12`–`0x15` is levels 1–4, `0x1C` Mythic Stone is 7), or 2 for 6→7. Its only caller is the confirm-message builder (`0x0809705C`), whose result then flows through the job object (vtable `0x080EE354`, days at `+0x18`) to the commit.
+  - Commit: `0x080A3FB4(G+0x1DBC, new tool item, days)`. The job is the u16 at `G+0x1DBC+0x14`: bits 0–5 tool item, bits 6–8 days left.
+  - Ready check `0x080A3E74`: tool set and days == 0. The nightly decrement `0x080A3FE0` only subtracts when days ≠ 0. Pickup `0x080A3EF8` clears it.
+  - Experience gate at `0x08096E2A`: the needed XP is 6000 / 18000 / 36000 / 65535 by ore, compared against `0x0800F044(0x0800EBCC(player, tool kind))`. The only XP adder is `0x0800F064(xp_ptr, amount)` (xp = min(xp+amount, 0xFFFF)). Its 7 callers (`0x08030392`…`0x08031C26`) pass 50, or 100 when a flag is set.
+  - Messages at `0x107DFC`–`0x1090D0` ("That Tool is … and it will take N day(s).").
+- **Tool XP:** u16 at `player + 0x2C + kind*4` (accessor `0x0800EBCC`, then `0x0800F044`). Kind = tool type with Sickle and Hoe swapped (`0x08096DE4`): kind 0 Hoe, 1 Sickle, 2 Axe, 3 Hammer, 4 Watering Can, 5 Fishing Rod. Tool item = type<<3 | level, with types in name-table order (Sickle, Hoe, Axe, Hammer, Can, Rod at `0xF1BB9`…). The maximum is 65535.
+- **Rucksack:** container at `G+0x1C48`: u32 slot count (8 with the big rucksack), then 4-byte slots (`0x0800FDB8`). A slot with byte0 bit0 = 1 is a material, with its id in byte1 (`0x0800F1C4`); bit0 = 0 is an item, with its id in byte1 and > 0xAA meaning empty (`0x0800F148`). Ores: `0x12` Copper, `0x13` Silver, `0x14` Gold, `0x15` Mystrile, `0x1C` Mythic Stone. To give a Mystrile, write `01 15 00 00` to an empty slot. That worked in game.
 - **Basket shop script:** `RIFF` at `0x765B94`. Money check at `0x767E3A` and payment at `0x767E91`, both `22 88 13` (5000). Text "Baskets are 5,000G." at `0x767FB6`.
 - **Money:** the RAM location hasn't been found yet. FoMT used a fixed `0x02004080`; in MFoMT it's probably G-relative, like stamina. Find it by searching G for the balance the Property screen shows (Select), then confirm with a write watchpoint while buying something. The 100M/10M literals at `0x1FB34`/`0x2AFD4` are number-formatting constants. An "infinite money" plan was written up (either force the maximum each frame from the HUD hook, or make the pay routine a no-op behind an L+Start toggle); the user declined it (2026-11-08).
 - **Text speed:** the user dropped this (2026-11-08). For reference: dialog glyphs are drawn into an EWRAM buffer (`0x0203B718` in one session) and DMA'd to OBJ VRAM, so VRAM watchpoints don't fire. Watch the RAM buffer instead.
@@ -89,9 +102,9 @@ QoL patches for **Harvest Moon: More Friends of Mineral Town (USA)** with **True
 Run the scripts from a scratch dir holding copies of `tools/*.py` and `tle.gba` (clean MFoMT + the TLE ips, made with `applyips.py`).
 
 1. `uv run python build.py` writes `stamina.ips` (HUD, fatigue, clock speed, key filter).
-2. `uv run python tweaks.py` writes `tweaks.ips` (grind reduction). `uv run python basket.py` writes `basket.ips`.
-3. `uv run python stack.py stamina.ips tweaks.ips basket.ips …` checks that no two patches write the same byte (so any subset in any order gives the same result) and writes `qol.gba` (TLE + all of them).
-4. Ship: copy `stamina.ips` → `MFoMT Stamina HUD (apply after TLE v4.0).ips`, `tweaks.ips` → `MFoMT Grind Reduction (apply after TLE v4.0).ips`, `basket.ips` → `MFoMT Free Basket (apply after TLE v4.0).ips`, and `qol.gba` → `Harvest Moon - MFoMT (TLE v4.0 + Stamina HUD).gba`. Keep that ROM filename so the user's `.sav` stays linked. Ask the user to save first.
+2. `uv run python tweaks.py` writes `tweaks.ips` (grind reduction). `uv run python basket.py` writes `basket.ips`. `uv run python upgrades.py` writes `upgrades.ips`. `uv run python toolxp.py` writes `toolxp.ips`.
+3. `uv run python stack.py stamina.ips tweaks.ips basket.ips upgrades.ips toolxp.ips …` checks that no two patches write the same byte (so any subset in any order gives the same result) and writes `qol.gba` (TLE + all of them).
+4. Ship: copy `stamina.ips` → `MFoMT Stamina HUD (apply after TLE v4.0).ips`, `tweaks.ips` → `MFoMT Grind Reduction (apply after TLE v4.0).ips`, `basket.ips` → `MFoMT Free Basket (apply after TLE v4.0).ips`, `upgrades.ips` → `MFoMT Fast Tool Upgrades (apply after TLE v4.0).ips`, `toolxp.ips` → `MFoMT Fast Tool XP (apply after TLE v4.0).ips`, and `qol.gba` → `Harvest Moon - MFoMT (TLE v4.0 + Stamina HUD).gba`. Keep that ROM filename so the user's `.sav` stays linked. Ask the user to save first.
 
 ## Tooling and gotchas
 
@@ -101,10 +114,12 @@ Run the scripts from a scratch dir holding copies of `tools/*.py` and `tle.gba` 
 - **Debugger:** run `/Applications/mGBA.app/Contents/MacOS/mGBA -g rom.gba` (mGBA 0.10.5). Its GDB stub listens on port 2345.
   - `tools/gdbc.py` is a minimal RSP client. Register writes must be **little-endian** hex. Watchpoints don't fire on DMA writes.
   - If memory doesn't change over about a second, the mGBA UI is paused, and `c` won't advance it.
+  - With `-g -t state`, the state loads only after the first `c`. Do attach, `c`, wait, break, then read/write, then `c`, all on **one connection**. Closing the socket while the target is stopped wedged the stub (connection resets), and only restarting mGBA fixed it.
 - **Input driver:** `tools/drive2.py` runs at full speed. It points the KEYINPUT literal at `0x080091A0` to RAM `0x0203FF00` and writes key bits there.
   - Restore the literal to `0x04000130` to give keyboard control back to the user.
 - **Other tools:**
   - `tools/render.py` rebuilds a screenshot from VRAM/OAM/palette over GDB. It's approximate: it ignores windows and blending, so dialog scenes look noisy.
+  - Any ROM bytes can be written into a running mGBA over GDB (`M` packet on `0x08xxxxxx`), which is handy for testing an in-place code patch without restarting.
   - `tools/hotswap.py` writes the hook region (`0x1300` bytes at `0x089DA000`) into a running ROM over GDB.
   - `tools/emutest2.py` runs the hook in **unicorn** against synthetic OAM and memory, then renders the sprites it produces to `raw_test.png`. Use it to check changes without a live emulator.
   - `tools/thumbdis.py <addr> <len>` is a capstone Thumb disassembler that resolves pc-relative literals.
@@ -160,9 +175,9 @@ Our `.ips` files (HUD, grind reduction, and free basket) also apply to clean MFo
 
 ## Planned features (chosen by the user 2026-11-08, none started)
 
-1. **Instant tool upgrades** at the blacksmith (ready the next morning or right away), and possibly cheaper.
+1. ~~Instant tool upgrades~~: done as 1 day, vanilla prices (`tools/upgrades.py`). The user picked the smallest change.
 2. **Higher rare-ore drop rates** in the mine (Mithril, Adamantite, Orichalcum, Mythic Stone).
-3. **Faster tool experience:** ×2 or ×3 to the hidden per-tool use counters that unlock charged swings.
+3. ~~Faster tool experience~~: done, ×5 (`tools/toolxp.py`).
 4. **Faster animal affection** for cows, sheep and chickens.
 5. **Self-watering crops:** every planted tile counts as watered each morning.
 6. **Automatic animal feeding:** troughs fill from the silo each morning.

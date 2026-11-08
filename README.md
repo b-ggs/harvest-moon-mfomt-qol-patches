@@ -7,6 +7,8 @@ Each feature set is its own patch, so you can pick any combination:
 - **Stamina HUD:** shows a stamina and fatigue meter next to the clock, and lets you speed up the game clock.
 - **Grind Reduction:** a cheaper Vacation House, the mountain cottage after 5 years, and visible mine stairs. Based on the optional QoL patch in Mentil's [*FoMT Proofread 1.22*](https://www.romhacking.net/hacks/9242/).
 - **Free Basket:** the Supermarket basket costs nothing. It's in its own patch because it's a bit generous.
+- **Fast Tool Upgrades:** every blacksmith upgrade is ready the next day.
+- **Fast Tool XP:** tools gain experience 5× faster.
 
 ## What you need
 
@@ -16,6 +18,8 @@ Each feature set is its own patch, so you can pick any combination:
 | `MFoMT Stamina HUD (apply after TLE v4.0).ips` | This repository |
 | `MFoMT Grind Reduction (apply after TLE v4.0).ips` | This repository |
 | `MFoMT Free Basket (apply after TLE v4.0).ips` | This repository |
+| `MFoMT Fast Tool Upgrades (apply after TLE v4.0).ips` | This repository |
+| `MFoMT Fast Tool XP (apply after TLE v4.0).ips` | This repository |
 | `Harvest Moon - MFoMT (True Love Edition v4.0).ips` *(optional)* | [kataiki.tumblr.com/FOMT-TL](https://kataiki.tumblr.com/FOMT-TL) |
 | An IPS patcher | [Rom Patcher JS](https://www.marcrobledo.com/RomPatcher.js/) runs in the browser. [Floating IPS (Flips)](https://github.com/Alcaro/Flips) is a desktop app. |
 
@@ -83,6 +87,14 @@ This patch is based on the optional `FOMT QOL.ips` that comes with **Mentil's [*
 
 - **The Supermarket basket costs 0G** instead of 5,000G, and the clerk's line says so.
 
+### Fast Tool Upgrades patch
+
+- **Every tool upgrade at Saibara's takes 1 day,** whatever the ore. Normally it's one day per level jumped, up to 7 for a Mythic Stone upgrade. Prices and experience requirements are unchanged.
+
+### Fast Tool XP patch
+
+- **Tools gain 5× experience per use** (250 instead of 50). A Copper upgrade takes about 24 uses instead of 120, and full experience about 260 instead of 1,300. Experience still caps at the usual maximum.
+
 ## Status
 
 **Tested in game (on TLE):**
@@ -90,6 +102,8 @@ This patch is based on the optional `FOMT QOL.ips` that comes with **Mentil's [*
 - The stamina and fatigue meter, including after leaving the mine or the hot springs.
 - Clock speed cycling, and the x2 rate.
 - Visible stairs on floor 0 and on floors 1 and below.
+- Fast tool upgrades: an Axe upgraded with Mystrile on a Wednesday was ready the next day.
+- Fast tool XP: four Hammer swings gave 1,000 XP.
 
 **Not tested in game yet:**
 
