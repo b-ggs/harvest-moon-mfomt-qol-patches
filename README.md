@@ -2,10 +2,11 @@
 
 Quality-of-life patches for **Harvest Moon: More Friends of Mineral Town** (GBA, USA). They're made to sit on top of [True Love Edition v4.0](https://kataiki.tumblr.com/FOMT-TL), but they also apply to the unmodified game.
 
-There are two patches, and you can use either one or both:
+Each feature set is its own patch, so you can pick any combination:
 
 - **Stamina HUD:** shows a stamina and fatigue meter next to the clock, and lets you speed up the game clock.
-- **Grind Reduction:** a cheaper Vacation House, the mountain cottage after 5 years, visible mine stairs, and a free basket. Based on the optional QoL patch in Mentil's [*FoMT Proofread 1.22*](https://www.romhacking.net/hacks/9242/).
+- **Grind Reduction:** a cheaper Vacation House, the mountain cottage after 5 years, and visible mine stairs. Based on the optional QoL patch in Mentil's [*FoMT Proofread 1.22*](https://www.romhacking.net/hacks/9242/).
+- **Free Basket:** the Supermarket basket costs nothing. It's in its own patch because it's a bit generous.
 
 ## What you need
 
@@ -14,6 +15,7 @@ There are two patches, and you can use either one or both:
 | A **Harvest Moon: More Friends of Mineral Town (USA)** ROM | Dump it from your own cartridge. It isn't included here. |
 | `MFoMT Stamina HUD (apply after TLE v4.0).ips` | This repository |
 | `MFoMT Grind Reduction (apply after TLE v4.0).ips` | This repository |
+| `MFoMT Free Basket (apply after TLE v4.0).ips` | This repository |
 | `Harvest Moon - MFoMT (True Love Edition v4.0).ips` *(optional)* | [kataiki.tumblr.com/FOMT-TL](https://kataiki.tumblr.com/FOMT-TL) |
 | An IPS patcher | [Rom Patcher JS](https://www.marcrobledo.com/RomPatcher.js/) runs in the browser. [Floating IPS (Flips)](https://github.com/Alcaro/Flips) is a desktop app. |
 
@@ -31,16 +33,16 @@ The patches won't work on the original *Friends of Mineral Town* (the boy versio
 
 1. Make a copy of your clean ROM and work on the copy.
 2. **If you want True Love Edition**, apply `Harvest Moon - MFoMT (True Love Edition v4.0).ips` first.
-3. Apply `MFoMT Stamina HUD (apply after TLE v4.0).ips`, `MFoMT Grind Reduction (apply after TLE v4.0).ips`, or both. If you use both, the order doesn't matter.
+3. Apply whichever of our patches you want. They don't overlap, so any combination works, in any order.
 4. Play the patched ROM in your emulator or on a flash cart.
 
 With Rom Patcher JS, pick the ROM, pick one `.ips`, then click **Apply patch** and save the result. To apply the next patch, load that saved file as the ROM.
 
 ### Is True Love Edition required?
 
-No. The filenames say "apply after TLE v4.0" because that's what the patches were built and play-tested on, but neither patch depends on it:
+No. The filenames say "apply after TLE v4.0" because that's what the patches were built and play-tested on, but none of them depends on it:
 
-- Every byte the two patches overwrite is the same in the original ROM and in TLE.
+- Every byte our patches overwrite is the same in the original ROM and in TLE.
 - TLE doesn't change any of the game code the patches hook into.
 
 So on the original game you get the same features. Note that the patches have only been **played** on TLE so far; on the original game they've been checked by comparing bytes, not by playing.
@@ -68,7 +70,7 @@ Your save file keeps working. Give the patched ROM the same name as your old one
 
 ### Grind Reduction patch
 
-This patch is based on the optional `FOMT QOL.ips` that comes with **Mentil's [*FoMT Proofread 1.22*](https://www.romhacking.net/hacks/9242/)**. That patch targets the original *Friends of Mineral Town*, so it can't be applied to MFoMT directly. The Vacation House, cottage and mine-stairs changes below follow its design (using the author's notes), re-implemented at MFoMT's addresses. The free basket and the Power Berry fix are our own additions.
+This patch is based on the optional `FOMT QOL.ips` that comes with **Mentil's [*FoMT Proofread 1.22*](https://www.romhacking.net/hacks/9242/)**. That patch targets the original *Friends of Mineral Town*, so it can't be applied to MFoMT directly. The Vacation House, cottage and mine-stairs changes below follow its design (using the author's notes), re-implemented at MFoMT's addresses. The Power Berry fix is our own addition.
 
 - **The Vacation House costs 2,500,000G** instead of 100,000,000G. The building menu shows the new price.
 - **The mountain cottage arrives after 5 years** of marriage instead of 50. This covers every spouse (8 checks), and the related "50th anniversary" dialog now says "5th".
@@ -76,7 +78,10 @@ This patch is based on the optional `FOMT QOL.ips` that comes with **Mentil's [*
   - On floors with stairs up, the stairs down are placed one square down and to the right of them.
   - On floor 0, which has no stairs up, the hidden staircase nearest the entrance is revealed.
   - Other buried items aren't affected. This also fixes a bug in the original FoMT patch that turned buried Power Berries into gold.
-- **Free basket.** The Supermarket basket costs 0G instead of 5,000G.
+
+### Free Basket patch
+
+- **The Supermarket basket costs 0G** instead of 5,000G, and the clerk's line says so.
 
 ## Status
 

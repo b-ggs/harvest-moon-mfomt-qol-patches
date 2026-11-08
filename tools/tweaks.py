@@ -1,11 +1,12 @@
 # Ports the FoMT Proofread "grind reduction" tweaks to MFoMT + TLE v4.0.
-# Input: stamina.gba (TLE + stamina HUD).  Output: qol.gba, tweaks.ips (relative to TLE).
+# Input: tle.gba.  Output: tweaks.ips (relative to TLE).
 import subprocess, struct, re
+from ipslib import make_ips
 
 LLVM = '/opt/homebrew/opt/llvm/bin'
 BASE = 'tle.gba'
-rom = bytearray(open('stamina.gba', 'rb').read())
 tle = open(BASE, 'rb').read()
+rom = bytearray(tle)
 
 def patch(off, old, new):
     assert rom[off:off+len(old)] == old, (hex(off), rom[off:off+len(old)], old)
@@ -35,13 +36,6 @@ for a in TEXT:
     assert all(0x20 <= c < 0x7f for c in seg), (hex(a), seg)
     rom[a:e] = b'5' + seg + b' '
 
-
-# ---------- 4. Basket: free at the Supermarket ----------
-# shop script (RIFF @0x765B94): money check  call 0xEF; push16 5000; cmp; jump   and
-# purchase  call 0x73 (give basket); push16 5000; call 0xF1 (pay)
-patch(0x767E3A, bytes.fromhex('228813'), bytes.fromhex('220000'))
-patch(0x767E91, bytes.fromhex('228813'), bytes.fromhex('220000'))
-patch(0x767FB6, b'Baskets are 5,000G.', b'Baskets are free!  ')
 
 # ---------- 3. Mines: stairs down always visible ----------
 # Hook the end of the floor generator (0x080A20BC). At 0x080A22D8 r6 = map struct,
@@ -146,24 +140,5 @@ rom[off:off+len(code)] = code
 patch(MINE_SITE - 0x08000000, bytes.fromhex('0c980d9908600d98'),
       struct.pack('<HH', 0x4B00, 0x4718) + struct.pack('<I', MINE_HOOK | 1))
 
-open('qol.gba', 'wb').write(rom)
-
-# IPS of just these tweaks, relative to TLE (stacks with the stamina HUD ips)
-hud = open('stamina.gba', 'rb').read()
-recs, i = [], 0
-while i < len(rom):
-    if rom[i] != hud[i]:
-        j = i
-        while j < len(rom) and j - i < 0xFFFF and (rom[j] != hud[j] or (j + 1 < len(rom) and rom[j+1] != hud[j+1])):
-            j += 1
-        recs.append((i, bytes(rom[i:j]))); i = j
-    else:
-        i += 1
-assert all(hud[o:o+len(d)] == tle[o:o+len(d)] for o, d in recs), 'overlaps HUD patch'
-ips = bytearray(b'PATCH')
-for o, d in recs:
-    assert o != 0x454F46
-    ips += o.to_bytes(3, 'big') + len(d).to_bytes(2, 'big') + d
-ips += b'EOF'
-open('tweaks.ips', 'wb').write(ips)
+recs = make_ips(tle, rom, 'tweaks.ips')
 print(f'mine hook {len(code)} bytes; cottage blocks {[hex(h) for h in hits]}; {len(recs)} IPS records')

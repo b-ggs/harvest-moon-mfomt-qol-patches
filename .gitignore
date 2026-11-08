@@ -16,9 +16,10 @@ Harvest Moon - MFoMT (True Love Edition v4.0).ips
 *.zip
 *.bps
 
-# --- Build outputs (tools/build.py, tools/tweaks.py) ---
+# --- Build outputs (tools/*.py) ---
 stamina.ips
 tweaks.ips
+basket.ips
 *.o
 raw_test.png
 

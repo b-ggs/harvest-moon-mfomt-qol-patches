@@ -9,7 +9,8 @@ QoL patches for **Harvest Moon: More Friends of Mineral Town (USA)** with **True
 | `Harvest Moon - More Friends of Mineral Town (USA).gba` | Clean MFoMT ROM, CRC32 `0x1736b957`. Don't modify it. |
 | `Harvest Moon - MFoMT (True Love Edition v4.0).ips` | TLE patch, applied to clean MFoMT. |
 | `MFoMT Stamina HUD (apply after TLE v4.0).ips` | Our patch. Apply it after TLE. |
-| `MFoMT Grind Reduction (apply after TLE v4.0).ips` | Our port of the Proofread grind-reduction tweaks. Apply it after TLE, in either order with the HUD patch. |
+| `MFoMT Grind Reduction (apply after TLE v4.0).ips` | Our port of the Proofread grind-reduction tweaks. |
+| `MFoMT Free Basket (apply after TLE v4.0).ips` | The free basket on its own. |
 | `Harvest Moon - MFoMT (TLE v4.0 + Stamina HUD).gba` / `.sav` | The ROM the user plays (TLE + HUD + grind reduction; the filename was kept so the save stays linked) and **the user's real save**. Never overwrite the `.sav`; copy it for testing. |
 | `….ss1` / `….ss2`, `Harvest Moon - More Friends of Mineral Town (USA).sav` | The user's mGBA save states and a save for the clean ROM. Keep them; copy before loading for debugging. |
 | `tools/` | Build and debug scripts (described below). |
@@ -29,7 +30,7 @@ QoL patches for **Harvest Moon: More Friends of Mineral Town (USA)** with **True
   - Clock hook: the 14 bytes at `0x08017FC6` become `ldr r0,[pc,#4]; bx r0` → `0x089DA800`, which looks up the threshold and jumps back to `0x080180B3` / `0x08017FDD`. Verified live: rolls over at 50 ticks when set to 2×.
   - Key filter: the game's key-read function `0x08009194` → `0x089DA880` hides Select while L is held (Select alone opens the Property screen). It reads KEYINPUT through the literal at `0x080091A0`, which is kept, so `drive2.py`'s redirect still works. The HUD hook reads keys the same way.
   - HUD state lives in RAM at `0x0203FFF0` (u16 previous keys, u8 popup timer), at the top of EWRAM, which appears unused.
-- **Free basket:** in `tools/tweaks.py`. The Supermarket basket costs 0G instead of 5,000G. Built, but not yet tested by buying it in game.
+- **Free basket:** in `tools/basket.py`, shipped as its own `.ips`. The Supermarket basket costs 0G instead of 5,000G. Built, but not yet tested by buying it in game.
 
 ## Key game facts (TLE ROM addresses)
 
@@ -80,12 +81,17 @@ QoL patches for **Harvest Moon: More Friends of Mineral Town (USA)** with **True
 
 ### Build pipeline
 
-The scripts expect `tle.gba` (clean MFoMT + the TLE ips) in the current directory. Run them from a scratch dir with copies of `tools/build.py` and `tools/tweaks.py`.
+**One `.ips` per feature** (user's decision, 2026-11-09), so people can leave out the more generous ones. Every patch script reads `tle.gba` and writes its own `.ips` relative to TLE, using `tools/ipslib.py`. Rules for new patches:
+- Give each one its own free-space block: HUD `0x089DA000`, mine stairs `0x089DB000`, and new ones from `0x089DC000` up, one 4 KB block each.
+- Two patches must never hook the same instruction. If two features need the same hook site, hook different instructions, or ask the user whether to merge them.
+- Ship as `MFoMT <Feature> (apply after TLE v4.0).ips`, and add it to the README's file table and features.
 
-1. `uv run python build.py` writes `stamina.gba` and `stamina.ips` (HUD, fatigue, clock speed, key filter; IPS relative to TLE).
-2. `uv run python tweaks.py` reads `stamina.gba` and writes `qol.gba` (everything) and `tweaks.ips` (grind reduction + free basket, relative to TLE).
-3. Check the stacking: TLE + stamina.ips + tweaks.ips, and the reverse order, must both equal `qol.gba` (`tools/applyips.py`).
-4. Ship: copy `stamina.ips` → `MFoMT Stamina HUD (apply after TLE v4.0).ips`, `tweaks.ips` → `MFoMT Grind Reduction (apply after TLE v4.0).ips`, and `qol.gba` → `Harvest Moon - MFoMT (TLE v4.0 + Stamina HUD).gba`. Keep that ROM filename so the user's `.sav` stays linked. Ask the user to save first.
+Run the scripts from a scratch dir holding copies of `tools/*.py` and `tle.gba` (clean MFoMT + the TLE ips, made with `applyips.py`).
+
+1. `uv run python build.py` writes `stamina.ips` (HUD, fatigue, clock speed, key filter).
+2. `uv run python tweaks.py` writes `tweaks.ips` (grind reduction). `uv run python basket.py` writes `basket.ips`.
+3. `uv run python stack.py stamina.ips tweaks.ips basket.ips …` checks that no two patches write the same byte (so any subset in any order gives the same result) and writes `qol.gba` (TLE + all of them).
+4. Ship: copy `stamina.ips` → `MFoMT Stamina HUD (apply after TLE v4.0).ips`, `tweaks.ips` → `MFoMT Grind Reduction (apply after TLE v4.0).ips`, `basket.ips` → `MFoMT Free Basket (apply after TLE v4.0).ips`, and `qol.gba` → `Harvest Moon - MFoMT (TLE v4.0 + Stamina HUD).gba`. Keep that ROM filename so the user's `.sav` stays linked. Ask the user to save first.
 
 ## Tooling and gotchas
 
@@ -120,7 +126,7 @@ The scripts expect `tle.gba` (clean MFoMT + the TLE ips) in the current director
 
 ### Port to MFoMT + TLE (done, `tools/tweaks.py` → `MFoMT Grind Reduction (apply after TLE v4.0).ips`)
 
-The user chose to stay on MFoMT+TLE and port all three tweaks. The patch stacks with the HUD `.ips` in either order.
+The user chose to stay on MFoMT+TLE and port all three tweaks. The patch stacks with the others in any order.
 
 - **Vacation house price:**
   - u32 at ROM `0x108458`: 100,000,000 becomes 2,500,000. It's in the same building table layout as FoMT's.
@@ -150,7 +156,18 @@ The user chose to stay on MFoMT+TLE and port all three tweaks. The patch stacks 
 
 ## Works without TLE (checked 2026-11-09)
 
-Both of our `.ips` files also apply to clean MFoMT. For every record in both patches, the bytes being overwritten are identical in clean and TLE. TLE's only code change below `0x100000` is at `0x3F44`; the rest of what it changes is data, from `0x108FA3` up. That means the hooked functions, the Options menu, the always-run check, the cottage scripts, the dialog strings and the free space at `0x9DA000` are all vanilla. So always-run is a vanilla feature, not something TLE adds. None of this has been play-tested without TLE.
+Our `.ips` files (HUD, grind reduction, and free basket) also apply to clean MFoMT. For every record in each patch, the bytes being overwritten are identical in clean and TLE. TLE's only code change below `0x100000` is at `0x3F44`; the rest of what it changes is data, from `0x108FA3` up. That means the hooked functions, the Options menu, the always-run check, the cottage scripts, the dialog strings and the free space at `0x9DA000` are all vanilla. So always-run is a vanilla feature, not something TLE adds. None of this has been play-tested without TLE.
+
+## Planned features (chosen by the user 2026-11-08, none started)
+
+1. **Instant tool upgrades** at the blacksmith (ready the next morning or right away), and possibly cheaper.
+2. **Higher rare-ore drop rates** in the mine (Mithril, Adamantite, Orichalcum, Mythic Stone).
+3. **Faster tool experience:** ×2 or ×3 to the hidden per-tool use counters that unlock charged swings.
+4. **Faster animal affection** for cows, sheep and chickens.
+5. **Self-watering crops:** every planted tile counts as watered each morning.
+6. **Automatic animal feeding:** troughs fill from the silo each morning.
+
+Each one ships as its own `.ips` (see Build pipeline). Approach: find each value with a write watchpoint while the user does the action once, then patch the code that changes it. Ideas that were offered but not picked: villager friendship ×2, faster construction and crop growth, lumber, stamina costs, shops open every day, a shipping-price multiplier, accurate forecasts, faster fishing, no animal sickness, and others.
 
 ## Open items
 
