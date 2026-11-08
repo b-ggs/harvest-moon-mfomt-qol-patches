@@ -15,6 +15,7 @@ QoL patches for **Harvest Moon: More Friends of Mineral Town (USA)** with **True
 | `MFoMT Fast Tool XP (apply after TLE v4.0).ips` | Tools gain 5× XP. |
 | `MFoMT Self-Watering Crops (apply after TLE v4.0).ips` | The farm is watered every night, as if it had rained. |
 | `MFoMT Automatic Animal Feeding (apply after TLE v4.0).ips` | Barn and coop troughs are filled from storage nightly. |
+| `MFoMT Faster Animal Affection (apply after TLE v4.0).ips` | Positive affection gains ×5. |
 | `Harvest Moon - MFoMT (TLE v4.0 + Stamina HUD).gba` / `.sav` | The ROM the user plays (TLE + HUD + grind reduction; the filename was kept so the save stays linked) and **the user's real save**. Never overwrite the `.sav`; copy it for testing. |
 | `….ss1` / `….ss2`, `Harvest Moon - More Friends of Mineral Town (USA).sav` | The user's mGBA save states and a save for the clean ROM. Keep them; copy before loading for debugging. |
 | `test/test.gba` + `test/test.sav` | Test copy: TLE + all our patches, with a save converted from `harvest-moon-more-friends-of-mineral-town.8984.sps` (SharkPort; the first 32 KB of its payload after a 0x1C-byte header is the `.sav`). The vanilla 2005 save is at Fall 26, Year 1, with 99.9M G, 5 cows, 4 chickens and 3 sheep. Use this for testing instead of the user's real save. Rebuild `test.gba` from `qol.gba` when patches change. |
@@ -39,6 +40,7 @@ QoL patches for **Harvest Moon: More Friends of Mineral Town (USA)** with **True
 - **Fast tool XP:** in `tools/toolxp.py`. ×5 (the user's choice). It rewrites the XP adder in place. Verified in game: four Hammer swings (three at rocks, one at the ground) took 29900 to 30900.
 - **Self-watering crops:** in `tools/watering.py`. A 1-byte change that makes the nightly per-cell update always take the rain path. Verified in game: 231 dry tiles → 230 watered (one became untilled), untilled ground untouched. Growth over several days hasn't been seen yet.
 - **Automatic animal feeding:** in `tools/feeding.py`. Hooks at `0x089DD000` (barn) and `0x089DD0A0` (coop) wrap each building's nightly update: top up, run the original, top up again (the user chose "both", so troughs are visibly stocked during the day). Unit-tested in unicorn with a stand-in original. Verified in game: before-only version 79→75 / 952→945, and the wrapper's first night 71→63 / 938→924 with troughs full in the morning and animals happy.
+- **Faster animal affection:** in `tools/affection.py`. ×5 (the user's choice) for positive deltas only; it rewrites the adder in place. Unit-tested in unicorn, and verified in game: brushing raised a cow from 14 to 19.
 - **Free basket:** in `tools/basket.py`, shipped as its own `.ips`. The Supermarket basket costs 0G instead of 5,000G. Built, but not yet tested by buying it in game.
 
 ## Key game facts (TLE ROM addresses)
@@ -75,6 +77,13 @@ QoL patches for **Harvest Moon: More Friends of Mineral Town (USA)** with **True
   - Animal slots: barn `+0x2C + i*0x3C`, coop `+0x18 + i*0x30`. Bit 0 of the first byte = occupied.
   - Barn API: `0x0800CEE0` feed count, `0x0800CEE8` trough count, `0x0800CF1C` trough filled?, `0x0800D2B0`/`0x0800D2F4` add/remove feed, `0x0800D330`/`0x0800D370` fill/empty trough. Coop equivalents are around `0x0800C5DC`–`0x0800C6xx`.
   - Nightly (`0x08009D0C`…): coop `0x0800CA60`, barn `0x0800D624`. Each popcounts the filled troughs into a shared food pool, clears them, and feeds animals from the pool.
+  - **Animal record = slot + 4** (`0x0800DA88`). Fields (animal-relative):
+    - `+0x08` name (12 chars)
+    - u32 `+0x18`: bits 0–9 age-ish counter (`0x080A0254` +1 nightly); bits 13–20 **affection** 0–250 (get `0x080A0194`, add `0x080A0214`, subtract `0x080A0248`); `+0x19` bit 3 brushed today (`0x080A01E4`), bit 4 another daily flag (`0x080A01FC`)
+    - byte `+0x1C`: another 0–250 stat (add `0x080A02F4` / sub `0x080A0310`), not yet identified (mood/health?)
+    - `+0x1E`/`+0x20`: 9-bit and 16-bit counters, +1 per call from `0x080A04E8` (3 callers)
+    - `0x080A04A4`: product grade from affection (>100, >200) and the 16-bit counter (> 0x8C9F).
+  - Affection gains are mostly +1 (talk, brush, milk…), one +50 (`0x0801069A`), and some variable (`0x0800CD00`, `0x0800DA06/4E`, `0x08044828`, `0x0804562x`…). Penalties: −10 ×7 sites, −1 random neglect (`0x080A0380`).
   - The `0x080112D8` switch on `G+0x1F74` is the **carpenter's** job completion (e.g. `0x0800D288` sets the barn's "big" bit), not animal care.
 - **Basket shop script:** `RIFF` at `0x765B94`. Money check at `0x767E3A` and payment at `0x767E91`, both `22 88 13` (5000). Text "Baskets are 5,000G." at `0x767FB6`.
 - **Money:** the RAM location hasn't been found yet. FoMT used a fixed `0x02004080`; in MFoMT it's probably G-relative, like stamina. Find it by searching G for the balance the Property screen shows (Select), then confirm with a write watchpoint while buying something. The 100M/10M literals at `0x1FB34`/`0x2AFD4` are number-formatting constants. An "infinite money" plan was written up (either force the maximum each frame from the HUD hook, or make the pay routine a no-op behind an L+Start toggle); the user declined it (2026-11-08).
@@ -120,9 +129,9 @@ QoL patches for **Harvest Moon: More Friends of Mineral Town (USA)** with **True
 Run the scripts from a scratch dir holding copies of `tools/*.py` and `tle.gba` (clean MFoMT + the TLE ips, made with `applyips.py`).
 
 1. `uv run python build.py` writes `stamina.ips` (HUD, fatigue, clock speed, key filter).
-2. `uv run python tweaks.py` writes `tweaks.ips` (grind reduction). `uv run python basket.py` writes `basket.ips`. `uv run python upgrades.py` writes `upgrades.ips`. `uv run python toolxp.py` writes `toolxp.ips`. `uv run python watering.py` writes `watering.ips`. `uv run python feeding.py` writes `feeding.ips`.
-3. `uv run python stack.py stamina.ips tweaks.ips basket.ips upgrades.ips toolxp.ips watering.ips feeding.ips …` checks that no two patches write the same byte (so any subset in any order gives the same result) and writes `qol.gba` (TLE + all of them).
-4. Ship: copy `stamina.ips` → `MFoMT Stamina HUD (apply after TLE v4.0).ips`, `tweaks.ips` → `MFoMT Grind Reduction (apply after TLE v4.0).ips`, `basket.ips` → `MFoMT Free Basket (apply after TLE v4.0).ips`, `upgrades.ips` → `MFoMT Fast Tool Upgrades (apply after TLE v4.0).ips`, `toolxp.ips` → `MFoMT Fast Tool XP (apply after TLE v4.0).ips`, `watering.ips` → `MFoMT Self-Watering Crops (apply after TLE v4.0).ips`, `feeding.ips` → `MFoMT Automatic Animal Feeding (apply after TLE v4.0).ips`, and `qol.gba` → `Harvest Moon - MFoMT (TLE v4.0 + Stamina HUD).gba`. Keep that ROM filename so the user's `.sav` stays linked. Ask the user to save first.
+2. `uv run python tweaks.py` writes `tweaks.ips` (grind reduction). `uv run python basket.py` writes `basket.ips`. `uv run python upgrades.py` writes `upgrades.ips`. `uv run python toolxp.py` writes `toolxp.ips`. `uv run python watering.py` writes `watering.ips`. `uv run python feeding.py` writes `feeding.ips`. `uv run python affection.py` writes `affection.ips`.
+3. `uv run python stack.py stamina.ips tweaks.ips basket.ips upgrades.ips toolxp.ips watering.ips feeding.ips affection.ips …` checks that no two patches write the same byte (so any subset in any order gives the same result) and writes `qol.gba` (TLE + all of them).
+4. Ship: copy `stamina.ips` → `MFoMT Stamina HUD (apply after TLE v4.0).ips`, `tweaks.ips` → `MFoMT Grind Reduction (apply after TLE v4.0).ips`, `basket.ips` → `MFoMT Free Basket (apply after TLE v4.0).ips`, `upgrades.ips` → `MFoMT Fast Tool Upgrades (apply after TLE v4.0).ips`, `toolxp.ips` → `MFoMT Fast Tool XP (apply after TLE v4.0).ips`, `watering.ips` → `MFoMT Self-Watering Crops (apply after TLE v4.0).ips`, `feeding.ips` → `MFoMT Automatic Animal Feeding (apply after TLE v4.0).ips`, `affection.ips` → `MFoMT Faster Animal Affection (apply after TLE v4.0).ips`, and `qol.gba` → `Harvest Moon - MFoMT (TLE v4.0 + Stamina HUD).gba`. Keep that ROM filename so the user's `.sav` stays linked. Ask the user to save first.
 
 ## Tooling and gotchas
 
@@ -197,7 +206,7 @@ Our `.ips` files (HUD, grind reduction, and free basket) also apply to clean MFo
 1. ~~Instant tool upgrades~~: done as 1 day, vanilla prices (`tools/upgrades.py`). The user picked the smallest change.
 2. **Higher rare-ore drop rates** in the mine (Mithril, Adamantite, Orichalcum, Mythic Stone).
 3. ~~Faster tool experience~~: done, ×5 (`tools/toolxp.py`).
-4. **Faster animal affection** for cows, sheep and chickens.
+4. ~~Faster animal affection~~: done, ×5 (`tools/affection.py`).
 5. ~~Self-watering crops~~: done (`tools/watering.py`).
 6. ~~Automatic animal feeding~~: done (`tools/feeding.py`).
 

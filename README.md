@@ -11,6 +11,7 @@ Each feature set is its own patch, so you can pick any combination:
 - **Fast Tool XP:** tools gain experience 5× faster.
 - **Self-Watering Crops:** your field is watered every night, as if it had rained.
 - **Automatic Animal Feeding:** troughs in the barn and coop are filled from storage every night.
+- **Faster Animal Affection:** animals gain affection 5× faster.
 
 ## What you need
 
@@ -24,6 +25,7 @@ Each feature set is its own patch, so you can pick any combination:
 | `MFoMT Fast Tool XP (apply after TLE v4.0).ips` | This repository |
 | `MFoMT Self-Watering Crops (apply after TLE v4.0).ips` | This repository |
 | `MFoMT Automatic Animal Feeding (apply after TLE v4.0).ips` | This repository |
+| `MFoMT Faster Animal Affection (apply after TLE v4.0).ips` | This repository |
 | `Harvest Moon - MFoMT (True Love Edition v4.0).ips` *(optional)* | [kataiki.tumblr.com/FOMT-TL](https://kataiki.tumblr.com/FOMT-TL) |
 | An IPS patcher | [Rom Patcher JS](https://www.marcrobledo.com/RomPatcher.js/) runs in the browser. [Floating IPS (Flips)](https://github.com/Alcaro/Flips) is a desktop app. |
 
@@ -113,6 +115,12 @@ This patch is based on the optional `FOMT QOL.ips` that comes with **Mentil's [*
   - You still have to buy feed. If storage runs out, the remaining animals go hungry, as usual.
   - Animals left outside are counted too, so on grazing days a little feed may be used for them anyway.
 
+### Faster Animal Affection patch
+
+- **Every affection gain is 5× bigger** (brushing, talking, milking, feeding and so on). That applies to cows, sheep and chickens.
+  - Penalties, such as hitting an animal or neglecting it, are unchanged.
+  - Affection still caps at the usual maximum.
+
 ## Status
 
 **Tested in game (on TLE):**
@@ -124,6 +132,7 @@ This patch is based on the optional `FOMT QOL.ips` that comes with **Mentil's [*
 - Fast tool XP: four Hammer swings gave 1,000 XP.
 - Self-watering: after one night, all 230 tilled tiles on the test farm were watered.
 - Automatic feeding: 4 chickens and 7 barn animals were fed overnight starting from empty troughs, with feed visible in the troughs the next day.
+- Faster affection: brushing a cow raised its affection by 5 instead of 1.
 
 **Not tested in game yet:**
 

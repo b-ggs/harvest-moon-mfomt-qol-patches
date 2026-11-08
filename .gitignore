@@ -26,6 +26,7 @@ upgrades.ips
 toolxp.ips
 watering.ips
 feeding.ips
+affection.ips
 *.o
 raw_test.png
 
