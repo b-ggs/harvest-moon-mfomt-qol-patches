@@ -16,6 +16,7 @@ QoL patches for **Harvest Moon: More Friends of Mineral Town (USA)** with **True
 | `MFoMT Self-Watering Crops (apply after TLE v4.0).ips` | The farm is watered every night, as if it had rained. |
 | `MFoMT Automatic Animal Feeding (apply after TLE v4.0).ips` | Barn and coop troughs are filled from storage nightly. |
 | `MFoMT Faster Animal Affection (apply after TLE v4.0).ips` | Positive affection gains ×5. |
+| `MFoMT Rare Ore Boost (apply after TLE v4.0).ips` | Spring Mine rare ores and Lake Mine rare jewels roughly ×2. |
 | `Harvest Moon - MFoMT (TLE v4.0 + Stamina HUD).gba` / `.sav` | The ROM the user plays (TLE + HUD + grind reduction; the filename was kept so the save stays linked) and **the user's real save**. Never overwrite the `.sav`; copy it for testing. |
 | `….ss1` / `….ss2`, `Harvest Moon - More Friends of Mineral Town (USA).sav` | The user's mGBA save states and a save for the clean ROM. Keep them; copy before loading for debugging. |
 | `test/test.gba` + `test/test.sav` | Test copy: TLE + all our patches, with a save converted from `harvest-moon-more-friends-of-mineral-town.8984.sps` (SharkPort; the first 32 KB of its payload after a 0x1C-byte header is the `.sav`). The vanilla 2005 save is at Fall 26, Year 1, with 99.9M G, 5 cows, 4 chickens and 3 sheep. Use this for testing instead of the user's real save. Rebuild `test.gba` from `qol.gba` when patches change. |
@@ -41,6 +42,9 @@ QoL patches for **Harvest Moon: More Friends of Mineral Town (USA)** with **True
 - **Self-watering crops:** in `tools/watering.py`. A 1-byte change that makes the nightly per-cell update always take the rain path. Verified in game: 231 dry tiles → 230 watered (one became untilled), untilled ground untouched. Growth over several days hasn't been seen yet.
 - **Automatic animal feeding:** in `tools/feeding.py`. Hooks at `0x089DD000` (barn) and `0x089DD0A0` (coop) wrap each building's nightly update: top up, run the original, top up again (the user chose "both", so troughs are visibly stocked during the day). Unit-tested in unicorn with a stand-in original. Verified in game: before-only version 79→75 / 952→945, and the wrapper's first night 71→63 / 938→924 with troughs full in the morning and animals happy.
 - **Faster animal affection:** in `tools/affection.py`. ×5 (the user's choice) for positive deltas only; it rewrites the adder in place. Unit-tested in unicorn, and verified in game: brushing raised a cow from 14 to 19.
+- **Rare ore boost:** in `tools/ores.py`. A data-only rewrite of both mines' weight tables, "more often only" (the user's choice: same floors).
+  - Spring Mine: gold..adamantite and mythic ×2. Lake Mine: Kappa Jewel, Pink Diamond, Alexandrite, Moon Stone, Sand Rose, Diamond and Emerald ×2. Room comes from empty rocks, then junk.
+  - Verified in game: Spring floor 22 had 30 rocks, 20 rare, 0 empty. Lake floor 1 generates normally (its row has no rare items, so it's unchanged).
 - **Free basket:** in `tools/basket.py`, shipped as its own `.ips`. The Supermarket basket costs 0G instead of 5,000G. Built, but not yet tested by buying it in game.
 
 ## Key game facts (TLE ROM addresses)
@@ -85,6 +89,16 @@ QoL patches for **Harvest Moon: More Friends of Mineral Town (USA)** with **True
     - `0x080A04A4`: product grade from affection (>100, >200) and the 16-bit counter (> 0x8C9F).
   - Affection gains are mostly +1 (talk, brush, milk…), one +50 (`0x0801069A`), and some variable (`0x0800CD00`, `0x0800DA06/4E`, `0x08044828`, `0x0804562x`…). Penalties: −10 ×7 sites, −1 random neglect (`0x080A0380`).
   - The `0x080112D8` switch on `G+0x1F74` is the **carpenter's** job completion (e.g. `0x0800D288` sets the barn's "big" bit), not animal care.
+- **Mine rock contents** (Spring Mine filler `0x080A22F0`, called from the generator at `0x080A22A4`; the Lake Mine is `0x080A2688`, with its own tables `0x0810C914` codes / `0x0810C94C` weights, 14 per row, 56 rows):
+  - Lake row = `0x080A2960(floor)`: floors 0–20 → row = floor; 21–99 → 20+rand(10); 100–199 → 32+rand(10); 200–250 → 43+rand(10); 251–254 → 54; 255 → 55; special floors → rows 30/31/32/42/43 (see `tools/ores.py`).
+  - Lake codes: `0x21` Kappa Jewel, `0x0C` junk, `0x15` Pink Diamond, `0x16` Alexandrite, `0x13` Moon Stone, `0x14` Sand Rose, `0x18`–`0x1F` Diamond, Emerald, Ruby, Topaz, Peridot, Fluorite, Agate, Amethyst. Many vanilla rows sum past 256, which truncates the last gems.
+  - Material ids (code + 5): `0x11` Junk … `0x17` Adamantite, `0x18` Moon Stone, `0x19` Sand Rose, `0x1A` Pink Diamond, `0x1B` Alexandrite, `0x1C` Mythic Stone, `0x1D` Diamond … `0x24` Amethyst, `0x25` Harvest Goddess Jewel, `0x26` Kappa Jewel, `0x27` Jewel of Truth. Spring code `0x20` is the Harvest Goddess Jewel (10/256 on special floors).
+  - Pass 1 places terrain and buried items using band `0x080A25A0(floor)` and `0x0810CC70` (5 weights per band; codes `0x0810CC5C`).
+  - Pass 2 places rocks (tile type 4) and rolls their contents: rand&0xFF against the 10 weights at `0x0810CCE4 + row*10`. The row is **`0x080A25F8(floor)`**: 21 rows (0–10 floors 0–10, 11 = 11–19, 12 = 20, 13 = 21–29, 14 = 30, 15 = 31–39, 16 = 40, 17 = 41–230, 18 = special floors 60/102/123/152/155/171/190/202/222, 19 = 231–254, 20 = 255).
+  - Contents go in tile bits 4–9 and equal material id − 5. Codes at `0x0810CCBC`: `0x0A` ? (material `0x0F`, 50/256 on floor 255), `0x20` Harvest Goddess Jewel, `0x0C` junk, `0x0D` copper, `0x0E` silver, `0x0F` gold, `0x10` mystrile, `0x11` orichalc, `0x12` adamantite, `0x17` mythic stone.
+  - Vanilla: gold from floor 3, mystrile from 6, orichalc/adamantite from 10, mythic 1/256 on rows 18–20.
+  - **Pitfall:** I first used the `0x080A25A0` bands for this table (15 rows), which is wrong. Check the row function at the actual read site.
+  - Floor 20 (special) generated about 300 rocks on a 28×28 map.
 - **Basket shop script:** `RIFF` at `0x765B94`. Money check at `0x767E3A` and payment at `0x767E91`, both `22 88 13` (5000). Text "Baskets are 5,000G." at `0x767FB6`.
 - **Money:** the RAM location hasn't been found yet. FoMT used a fixed `0x02004080`; in MFoMT it's probably G-relative, like stamina. Find it by searching G for the balance the Property screen shows (Select), then confirm with a write watchpoint while buying something. The 100M/10M literals at `0x1FB34`/`0x2AFD4` are number-formatting constants. An "infinite money" plan was written up (either force the maximum each frame from the HUD hook, or make the pay routine a no-op behind an L+Start toggle); the user declined it (2026-11-08).
 - **Text speed:** the user dropped this (2026-11-08). For reference: dialog glyphs are drawn into an EWRAM buffer (`0x0203B718` in one session) and DMA'd to OBJ VRAM, so VRAM watchpoints don't fire. Watch the RAM buffer instead.
@@ -129,9 +143,9 @@ QoL patches for **Harvest Moon: More Friends of Mineral Town (USA)** with **True
 Run the scripts from a scratch dir holding copies of `tools/*.py` and `tle.gba` (clean MFoMT + the TLE ips, made with `applyips.py`).
 
 1. `uv run python build.py` writes `stamina.ips` (HUD, fatigue, clock speed, key filter).
-2. `uv run python tweaks.py` writes `tweaks.ips` (grind reduction). `uv run python basket.py` writes `basket.ips`. `uv run python upgrades.py` writes `upgrades.ips`. `uv run python toolxp.py` writes `toolxp.ips`. `uv run python watering.py` writes `watering.ips`. `uv run python feeding.py` writes `feeding.ips`. `uv run python affection.py` writes `affection.ips`.
-3. `uv run python stack.py stamina.ips tweaks.ips basket.ips upgrades.ips toolxp.ips watering.ips feeding.ips affection.ips …` checks that no two patches write the same byte (so any subset in any order gives the same result) and writes `qol.gba` (TLE + all of them).
-4. Ship: copy `stamina.ips` → `MFoMT Stamina HUD (apply after TLE v4.0).ips`, `tweaks.ips` → `MFoMT Grind Reduction (apply after TLE v4.0).ips`, `basket.ips` → `MFoMT Free Basket (apply after TLE v4.0).ips`, `upgrades.ips` → `MFoMT Fast Tool Upgrades (apply after TLE v4.0).ips`, `toolxp.ips` → `MFoMT Fast Tool XP (apply after TLE v4.0).ips`, `watering.ips` → `MFoMT Self-Watering Crops (apply after TLE v4.0).ips`, `feeding.ips` → `MFoMT Automatic Animal Feeding (apply after TLE v4.0).ips`, `affection.ips` → `MFoMT Faster Animal Affection (apply after TLE v4.0).ips`, and `qol.gba` → `Harvest Moon - MFoMT (TLE v4.0 + Stamina HUD).gba`. Keep that ROM filename so the user's `.sav` stays linked. Ask the user to save first.
+2. `uv run python tweaks.py` writes `tweaks.ips` (grind reduction). `uv run python basket.py` writes `basket.ips`. `uv run python upgrades.py` writes `upgrades.ips`. `uv run python toolxp.py` writes `toolxp.ips`. `uv run python watering.py` writes `watering.ips`. `uv run python feeding.py` writes `feeding.ips`. `uv run python affection.py` writes `affection.ips`. `uv run python ores.py` writes `ores.ips`.
+3. `uv run python stack.py stamina.ips tweaks.ips basket.ips upgrades.ips toolxp.ips watering.ips feeding.ips affection.ips ores.ips …` checks that no two patches write the same byte (so any subset in any order gives the same result) and writes `qol.gba` (TLE + all of them).
+4. Ship: copy `stamina.ips` → `MFoMT Stamina HUD (apply after TLE v4.0).ips`, `tweaks.ips` → `MFoMT Grind Reduction (apply after TLE v4.0).ips`, `basket.ips` → `MFoMT Free Basket (apply after TLE v4.0).ips`, `upgrades.ips` → `MFoMT Fast Tool Upgrades (apply after TLE v4.0).ips`, `toolxp.ips` → `MFoMT Fast Tool XP (apply after TLE v4.0).ips`, `watering.ips` → `MFoMT Self-Watering Crops (apply after TLE v4.0).ips`, `feeding.ips` → `MFoMT Automatic Animal Feeding (apply after TLE v4.0).ips`, `affection.ips` → `MFoMT Faster Animal Affection (apply after TLE v4.0).ips`, `ores.ips` → `MFoMT Rare Ore Boost (apply after TLE v4.0).ips`, and `qol.gba` → `Harvest Moon - MFoMT (TLE v4.0 + Stamina HUD).gba`. Keep that ROM filename so the user's `.sav` stays linked. Ask the user to save first.
 
 ## Tooling and gotchas
 
@@ -147,7 +161,7 @@ Run the scripts from a scratch dir holding copies of `tools/*.py` and `tle.gba` 
   - Restore the literal to `0x04000130` to give keyboard control back to the user.
 - **Other tools:**
   - `tools/render.py` rebuilds a screenshot from VRAM/OAM/palette over GDB. It's approximate: it ignores windows and blending, so dialog scenes look noisy.
-  - Any ROM bytes can be written into a running mGBA over GDB (`M` packet on `0x08xxxxxx`), which is handy for testing an in-place code patch without restarting.
+  - Any ROM bytes can be written into a running mGBA over GDB (`M` packet on `0x08xxxxxx`), which is handy for testing an in-place code patch without restarting. Keep each `M` packet ≤ 0x100 bytes: a 784-byte write wedged the stub.
   - `tools/hotswap.py` writes the hook region (`0x1300` bytes at `0x089DA000`) into a running ROM over GDB.
   - `tools/emutest2.py` runs the hook in **unicorn** against synthetic OAM and memory, then renders the sprites it produces to `raw_test.png`. Use it to check changes without a live emulator.
   - `tools/thumbdis.py <addr> <len>` is a capstone Thumb disassembler that resolves pc-relative literals.
@@ -186,7 +200,7 @@ The user chose to stay on MFoMT+TLE and port all three tweaks. The patch stacks 
   - At that point `r6` is the map struct, and r1–r7 are free because the epilogue restores them.
   - Tile halfwords are at `r6+4`, 28×28, 56 bytes per row:
     - bits 0–3: type (0 clear, 1 tilled, 2 stairs down, 3 stairs up, 4 rock)
-    - bits 4–7: rock contents
+    - bits 4–9: rock contents (material id − 5; see "Mine rock contents")
     - bits 8–9: preserved by the generator, meaning unknown
     - byte1 bits 2–7: buried item (1 hidden stairs, 2 gold, 3 power berry, 0xC junk, 0x10 mithril …)
   - The hook acts only if the floor has hidden stairs. With a stairs-up tile (not on the right edge), it puts stairs down at up+58 bytes (one row down, one tile right), keeping bits 8–9.
@@ -204,7 +218,7 @@ Our `.ips` files (HUD, grind reduction, and free basket) also apply to clean MFo
 ## Planned features (chosen by the user 2026-11-08, none started)
 
 1. ~~Instant tool upgrades~~: done as 1 day, vanilla prices (`tools/upgrades.py`). The user picked the smallest change.
-2. **Higher rare-ore drop rates** in the mine (Mithril, Adamantite, Orichalcum, Mythic Stone).
+2. ~~Higher rare-ore drop rates~~: done, Spring Mine ×2, same floors (`tools/ores.py`).
 3. ~~Faster tool experience~~: done, ×5 (`tools/toolxp.py`).
 4. ~~Faster animal affection~~: done, ×5 (`tools/affection.py`).
 5. ~~Self-watering crops~~: done (`tools/watering.py`).

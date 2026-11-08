@@ -12,6 +12,7 @@ Each feature set is its own patch, so you can pick any combination:
 - **Self-Watering Crops:** your field is watered every night, as if it had rained.
 - **Automatic Animal Feeding:** troughs in the barn and coop are filled from storage every night.
 - **Faster Animal Affection:** animals gain affection 5× faster.
+- **Rare Ore Boost:** rare ores and jewels drop about twice as often in both mines.
 
 ## What you need
 
@@ -26,6 +27,7 @@ Each feature set is its own patch, so you can pick any combination:
 | `MFoMT Self-Watering Crops (apply after TLE v4.0).ips` | This repository |
 | `MFoMT Automatic Animal Feeding (apply after TLE v4.0).ips` | This repository |
 | `MFoMT Faster Animal Affection (apply after TLE v4.0).ips` | This repository |
+| `MFoMT Rare Ore Boost (apply after TLE v4.0).ips` | This repository |
 | `Harvest Moon - MFoMT (True Love Edition v4.0).ips` *(optional)* | [kataiki.tumblr.com/FOMT-TL](https://kataiki.tumblr.com/FOMT-TL) |
 | An IPS patcher | [Rom Patcher JS](https://www.marcrobledo.com/RomPatcher.js/) runs in the browser. [Floating IPS (Flips)](https://github.com/Alcaro/Flips) is a desktop app. |
 
@@ -121,6 +123,14 @@ This patch is based on the optional `FOMT QOL.ips` that comes with **Mentil's [*
   - Penalties, such as hitting an animal or neglecting it, are unchanged.
   - Affection still caps at the usual maximum.
 
+### Rare Ore Boost patch
+
+- **In the Spring Mine, rocks hold rare ores about twice as often:** Gold, Mystrile, Orichalc, Adamantite and Mythic Stone.
+  - Each ore still starts on the same floor as usual: Gold from floor 3, Mystrile from 6, Orichalc and Adamantite from 10. Mythic Stone only appears on special floors and floor 231 and below.
+  - The extra chance comes out of empty rocks and Junk Ore first. On the deepest floors, Copper and Silver also become rarer, but never less than half as common as usual.
+- **In the Lake Mine, the rarer jewels are about twice as common:** Kappa Jewel, Pink Diamond, Alexandrite, Moon Stone, Sand Rose, Diamond and Emerald.
+  - They still appear on the same floors as usual. The common gems (Ruby, Topaz, Peridot, Fluorite, Agate, Amethyst) keep their chances, except on the deepest floors, where they make room.
+
 ## Status
 
 **Tested in game (on TLE):**
@@ -133,6 +143,7 @@ This patch is based on the optional `FOMT QOL.ips` that comes with **Mentil's [*
 - Self-watering: after one night, all 230 tilled tiles on the test farm were watered.
 - Automatic feeding: 4 chickens and 7 barn animals were fed overnight starting from empty troughs, with feed visible in the troughs the next day.
 - Faster affection: brushing a cow raised its affection by 5 instead of 1.
+- Rare ore boost: Spring Mine floor 22 had 20 rare-ore rocks out of 30 and no empty ones. The unmodified game averages about 12 rare and 12 empty. Lake Mine floors still generate normally.
 
 **Not tested in game yet:**
 

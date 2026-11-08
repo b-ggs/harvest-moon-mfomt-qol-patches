@@ -27,6 +27,7 @@ toolxp.ips
 watering.ips
 feeding.ips
 affection.ips
+ores.ips
 *.o
 raw_test.png
 
