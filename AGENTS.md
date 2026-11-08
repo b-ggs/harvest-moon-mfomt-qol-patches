@@ -13,6 +13,7 @@ QoL patches for **Harvest Moon: More Friends of Mineral Town (USA)** with **True
 | `MFoMT Free Basket (apply after TLE v4.0).ips` | The free basket on its own. |
 | `MFoMT Fast Tool Upgrades (apply after TLE v4.0).ips` | Every blacksmith upgrade takes 1 day. |
 | `MFoMT Fast Tool XP (apply after TLE v4.0).ips` | Tools gain 5× XP. |
+| `MFoMT Self-Watering Crops (apply after TLE v4.0).ips` | The farm is watered every night, as if it had rained. |
 | `Harvest Moon - MFoMT (TLE v4.0 + Stamina HUD).gba` / `.sav` | The ROM the user plays (TLE + HUD + grind reduction; the filename was kept so the save stays linked) and **the user's real save**. Never overwrite the `.sav`; copy it for testing. |
 | `….ss1` / `….ss2`, `Harvest Moon - More Friends of Mineral Town (USA).sav` | The user's mGBA save states and a save for the clean ROM. Keep them; copy before loading for debugging. |
 | `test/test.gba` + `test/test.sav` | Test copy: TLE + all our patches, with a save converted from `harvest-moon-more-friends-of-mineral-town.8984.sps` (SharkPort; the first 32 KB of its payload after a 0x1C-byte header is the `.sav`). The vanilla 2005 save is at Fall 26, Year 1, with 99.9M G, 5 cows, 4 chickens and 3 sheep. Use this for testing instead of the user's real save. Rebuild `test.gba` from `qol.gba` when patches change. |
@@ -35,6 +36,7 @@ QoL patches for **Harvest Moon: More Friends of Mineral Town (USA)** with **True
   - HUD state lives in RAM at `0x0203FFF0` (u16 previous keys, u8 popup timer), at the top of EWRAM, which appears unused.
 - **Fast tool upgrades:** in `tools/upgrades.py`. Every upgrade takes 1 day. Checked in unicorn for every tool level and ore, and verified in game (2026-11-09): an Axe upgraded with Mystrile on Wednesday was ready Thursday (the shop is closed Thursdays, so it was picked up Friday).
 - **Fast tool XP:** in `tools/toolxp.py`. ×5 (the user's choice). It rewrites the XP adder in place. Verified in game: four Hammer swings (three at rocks, one at the ground) took 29900 to 30900.
+- **Self-watering crops:** in `tools/watering.py`. A 1-byte change that makes the nightly per-cell update always take the rain path. Verified in game: 231 dry tiles → 230 watered (one became untilled), untilled ground untouched. Growth over several days hasn't been seen yet.
 - **Free basket:** in `tools/basket.py`, shipped as its own `.ips`. The Supermarket basket costs 0G instead of 5,000G. Built, but not yet tested by buying it in game.
 
 ## Key game facts (TLE ROM addresses)
@@ -58,6 +60,12 @@ QoL patches for **Harvest Moon: More Friends of Mineral Town (USA)** with **True
   - Messages at `0x107DFC`–`0x1090D0` ("That Tool is … and it will take N day(s).").
 - **Tool XP:** u16 at `player + 0x2C + kind*4` (accessor `0x0800EBCC`, then `0x0800F044`). Kind = tool type with Sickle and Hoe swapped (`0x08096DE4`): kind 0 Hoe, 1 Sickle, 2 Axe, 3 Hammer, 4 Watering Can, 5 Fishing Rod. Tool item = type<<3 | level, with types in name-table order (Sickle, Hoe, Axe, Hammer, Can, Rod at `0xF1BB9`…). The maximum is 65535.
 - **Rucksack:** container at `G+0x1C48`: u32 slot count (8 with the big rucksack), then 4-byte slots (`0x0800FDB8`). A slot with byte0 bit0 = 1 is a material, with its id in byte1 (`0x0800F1C4`); bit0 = 0 is an item, with its id in byte1 and > 0xAA meaning empty (`0x0800F148`). Ores: `0x12` Copper, `0x13` Silver, `0x14` Gold, `0x15` Mystrile, `0x1C` Mythic Stone. To give a Mystrile, write `01 15 00 00` to an empty slot. That worked in game.
+- **Farm field:** `G+0x9EC`, 43×25 cells of u32 (ends at `G+0x1AB8`). Bits 0–1 hold the soil: 0 untilled, 1 tilled dry, 2 watered. Bits 8–11 are nonzero when something is on the cell (crop, grass, weed, stone…). `0x0800A190(cell, state)` sets the soil; the Watering Can's `0x0800A4A8(cell)` does 1 → 2.
+  - The can's action (`0x08031BAC`) calls handler `0x0801D580` through `0x080DB53C` (`bx r2`); it reads the cell at `[[obj+0x1038]] + 0x9EC + (y*43 + x)*4`.
+  - **Daily per-cell update:** the function ending at `0x0800AB76`. At `0x0800AB42`: if r8 (rain) == 0, watered → dry; otherwise dry → watered.
+  - `0x0800AB78(cell, season)` (only caller: the loop at `0x08011270`) is the **season-change** pass. It runs only when bits 2–6 of `G+0x11` (day of the season) are 0. Don't hook it for daily effects.
+  - `G+0x11`: bits 0–1 season, bits 2–6 day of the season (0-based).
+  - The BG tilemap at `G+0x6000`-ish (rows of 0x100) is only the screen copy. Dry soil is `0x9349..4C`, wet is `0x934D..50`. It's updated by DMA, so watchpoints miss it.
 - **Basket shop script:** `RIFF` at `0x765B94`. Money check at `0x767E3A` and payment at `0x767E91`, both `22 88 13` (5000). Text "Baskets are 5,000G." at `0x767FB6`.
 - **Money:** the RAM location hasn't been found yet. FoMT used a fixed `0x02004080`; in MFoMT it's probably G-relative, like stamina. Find it by searching G for the balance the Property screen shows (Select), then confirm with a write watchpoint while buying something. The 100M/10M literals at `0x1FB34`/`0x2AFD4` are number-formatting constants. An "infinite money" plan was written up (either force the maximum each frame from the HUD hook, or make the pay routine a no-op behind an L+Start toggle); the user declined it (2026-11-08).
 - **Text speed:** the user dropped this (2026-11-08). For reference: dialog glyphs are drawn into an EWRAM buffer (`0x0203B718` in one session) and DMA'd to OBJ VRAM, so VRAM watchpoints don't fire. Watch the RAM buffer instead.
@@ -102,9 +110,9 @@ QoL patches for **Harvest Moon: More Friends of Mineral Town (USA)** with **True
 Run the scripts from a scratch dir holding copies of `tools/*.py` and `tle.gba` (clean MFoMT + the TLE ips, made with `applyips.py`).
 
 1. `uv run python build.py` writes `stamina.ips` (HUD, fatigue, clock speed, key filter).
-2. `uv run python tweaks.py` writes `tweaks.ips` (grind reduction). `uv run python basket.py` writes `basket.ips`. `uv run python upgrades.py` writes `upgrades.ips`. `uv run python toolxp.py` writes `toolxp.ips`.
-3. `uv run python stack.py stamina.ips tweaks.ips basket.ips upgrades.ips toolxp.ips …` checks that no two patches write the same byte (so any subset in any order gives the same result) and writes `qol.gba` (TLE + all of them).
-4. Ship: copy `stamina.ips` → `MFoMT Stamina HUD (apply after TLE v4.0).ips`, `tweaks.ips` → `MFoMT Grind Reduction (apply after TLE v4.0).ips`, `basket.ips` → `MFoMT Free Basket (apply after TLE v4.0).ips`, `upgrades.ips` → `MFoMT Fast Tool Upgrades (apply after TLE v4.0).ips`, `toolxp.ips` → `MFoMT Fast Tool XP (apply after TLE v4.0).ips`, and `qol.gba` → `Harvest Moon - MFoMT (TLE v4.0 + Stamina HUD).gba`. Keep that ROM filename so the user's `.sav` stays linked. Ask the user to save first.
+2. `uv run python tweaks.py` writes `tweaks.ips` (grind reduction). `uv run python basket.py` writes `basket.ips`. `uv run python upgrades.py` writes `upgrades.ips`. `uv run python toolxp.py` writes `toolxp.ips`. `uv run python watering.py` writes `watering.ips`.
+3. `uv run python stack.py stamina.ips tweaks.ips basket.ips upgrades.ips toolxp.ips watering.ips …` checks that no two patches write the same byte (so any subset in any order gives the same result) and writes `qol.gba` (TLE + all of them).
+4. Ship: copy `stamina.ips` → `MFoMT Stamina HUD (apply after TLE v4.0).ips`, `tweaks.ips` → `MFoMT Grind Reduction (apply after TLE v4.0).ips`, `basket.ips` → `MFoMT Free Basket (apply after TLE v4.0).ips`, `upgrades.ips` → `MFoMT Fast Tool Upgrades (apply after TLE v4.0).ips`, `toolxp.ips` → `MFoMT Fast Tool XP (apply after TLE v4.0).ips`, `watering.ips` → `MFoMT Self-Watering Crops (apply after TLE v4.0).ips`, and `qol.gba` → `Harvest Moon - MFoMT (TLE v4.0 + Stamina HUD).gba`. Keep that ROM filename so the user's `.sav` stays linked. Ask the user to save first.
 
 ## Tooling and gotchas
 
@@ -114,7 +122,8 @@ Run the scripts from a scratch dir holding copies of `tools/*.py` and `tle.gba` 
 - **Debugger:** run `/Applications/mGBA.app/Contents/MacOS/mGBA -g rom.gba` (mGBA 0.10.5). Its GDB stub listens on port 2345.
   - `tools/gdbc.py` is a minimal RSP client. Register writes must be **little-endian** hex. Watchpoints don't fire on DMA writes.
   - If memory doesn't change over about a second, the mGBA UI is paused, and `c` won't advance it.
-  - With `-g -t state`, the state loads only after the first `c`. Do attach, `c`, wait, break, then read/write, then `c`, all on **one connection**. Closing the socket while the target is stopped wedged the stub (connection resets), and only restarting mGBA fixed it.
+  - With `-g -t state`, the state loads only after the first `c`. Do attach, `c`, wait, break, then read/write, then `c`, all on **one connection**. Closing the socket while the target is stopped wedged the stub (connection resets), and only restarting mGBA fixed it. Killing a script while it's blocked waiting on a watchpoint also wedges it. The stub allows **one client at a time**, so never leave a watch script running when you need to read memory. Before restarting, ask the user to make a save state in the debug window.
+  - Snapshot diffing of EWRAM is very noisy (NPCs, timers). A one-shot **breakpoint on the action's code path** (e.g. the tool's dispatch call) worked far better for finding data structures.
 - **Input driver:** `tools/drive2.py` runs at full speed. It points the KEYINPUT literal at `0x080091A0` to RAM `0x0203FF00` and writes key bits there.
   - Restore the literal to `0x04000130` to give keyboard control back to the user.
 - **Other tools:**
@@ -179,7 +188,7 @@ Our `.ips` files (HUD, grind reduction, and free basket) also apply to clean MFo
 2. **Higher rare-ore drop rates** in the mine (Mithril, Adamantite, Orichalcum, Mythic Stone).
 3. ~~Faster tool experience~~: done, ×5 (`tools/toolxp.py`).
 4. **Faster animal affection** for cows, sheep and chickens.
-5. **Self-watering crops:** every planted tile counts as watered each morning.
+5. ~~Self-watering crops~~: done (`tools/watering.py`).
 6. **Automatic animal feeding:** troughs fill from the silo each morning.
 
 Each one ships as its own `.ips` (see Build pipeline). Approach: find each value with a write watchpoint while the user does the action once, then patch the code that changes it. Ideas that were offered but not picked: villager friendship ×2, faster construction and crop growth, lumber, stamina costs, shops open every day, a shipping-price multiplier, accurate forecasts, faster fishing, no animal sickness, and others.

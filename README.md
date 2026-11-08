@@ -9,6 +9,7 @@ Each feature set is its own patch, so you can pick any combination:
 - **Free Basket:** the Supermarket basket costs nothing. It's in its own patch because it's a bit generous.
 - **Fast Tool Upgrades:** every blacksmith upgrade is ready the next day.
 - **Fast Tool XP:** tools gain experience 5× faster.
+- **Self-Watering Crops:** your field is watered every night, as if it had rained.
 
 ## What you need
 
@@ -20,6 +21,7 @@ Each feature set is its own patch, so you can pick any combination:
 | `MFoMT Free Basket (apply after TLE v4.0).ips` | This repository |
 | `MFoMT Fast Tool Upgrades (apply after TLE v4.0).ips` | This repository |
 | `MFoMT Fast Tool XP (apply after TLE v4.0).ips` | This repository |
+| `MFoMT Self-Watering Crops (apply after TLE v4.0).ips` | This repository |
 | `Harvest Moon - MFoMT (True Love Edition v4.0).ips` *(optional)* | [kataiki.tumblr.com/FOMT-TL](https://kataiki.tumblr.com/FOMT-TL) |
 | An IPS patcher | [Rom Patcher JS](https://www.marcrobledo.com/RomPatcher.js/) runs in the browser. [Floating IPS (Flips)](https://github.com/Alcaro/Flips) is a desktop app. |
 
@@ -95,6 +97,12 @@ This patch is based on the optional `FOMT QOL.ips` that comes with **Mentil's [*
 
 - **Tools gain 5× experience per use** (250 instead of 50). A Copper upgrade takes about 24 uses instead of 120, and full experience about 260 instead of 1,300. Experience still caps at the usual maximum.
 
+### Self-Watering Crops patch
+
+- **All tilled soil on the farm is watered overnight,** exactly as on a rainy day. Crops grow every night without the Watering Can.
+  - Seeds planted on soil you tilled that same day start growing from the second night, as they would after rain.
+  - The Watering Can still works, for example on the day you plant.
+
 ## Status
 
 **Tested in game (on TLE):**
@@ -104,6 +112,7 @@ This patch is based on the optional `FOMT QOL.ips` that comes with **Mentil's [*
 - Visible stairs on floor 0 and on floors 1 and below.
 - Fast tool upgrades: an Axe upgraded with Mystrile on a Wednesday was ready the next day.
 - Fast tool XP: four Hammer swings gave 1,000 XP.
+- Self-watering: after one night, all 230 tilled tiles on the test farm were watered.
 
 **Not tested in game yet:**
 
@@ -111,6 +120,7 @@ This patch is based on the optional `FOMT QOL.ips` that comes with **Mentil's [*
 - Buying the free basket.
 - Mine stairs in the Lake Mine and on special floors.
 - The meter in busy scenes (festivals, cutscenes).
+- Self-watering crops: crop growth over several days (the test save ran into Winter 1).
 - Anything on the original game without TLE.
 
 ## Credits
