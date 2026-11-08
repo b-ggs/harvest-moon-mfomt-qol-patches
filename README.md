@@ -10,6 +10,7 @@ Each feature set is its own patch, so you can pick any combination:
 - **Fast Tool Upgrades:** every blacksmith upgrade is ready the next day.
 - **Fast Tool XP:** tools gain experience 5× faster.
 - **Self-Watering Crops:** your field is watered every night, as if it had rained.
+- **Automatic Animal Feeding:** troughs in the barn and coop are filled from storage every night.
 
 ## What you need
 
@@ -22,6 +23,7 @@ Each feature set is its own patch, so you can pick any combination:
 | `MFoMT Fast Tool Upgrades (apply after TLE v4.0).ips` | This repository |
 | `MFoMT Fast Tool XP (apply after TLE v4.0).ips` | This repository |
 | `MFoMT Self-Watering Crops (apply after TLE v4.0).ips` | This repository |
+| `MFoMT Automatic Animal Feeding (apply after TLE v4.0).ips` | This repository |
 | `Harvest Moon - MFoMT (True Love Edition v4.0).ips` *(optional)* | [kataiki.tumblr.com/FOMT-TL](https://kataiki.tumblr.com/FOMT-TL) |
 | An IPS patcher | [Rom Patcher JS](https://www.marcrobledo.com/RomPatcher.js/) runs in the browser. [Floating IPS (Flips)](https://github.com/Alcaro/Flips) is a desktop app. |
 
@@ -103,6 +105,14 @@ This patch is based on the optional `FOMT QOL.ips` that comes with **Mentil's [*
   - Seeds planted on soil you tilled that same day start growing from the second night, as they would after rain.
   - The Watering Can still works, for example on the day you plant.
 
+### Automatic Animal Feeding patch
+
+- **Each night, troughs are filled from storage,** one per animal: Fodder from the silo in the barn, Chicken Feed in the coop.
+  - They're topped up before the animals eat (so animals bought that day are fed) and refilled afterwards, so you'll see feed in the troughs during the day.
+  - It uses one feed per animal per day, plus a one-time refill on the first night. Troughs you filled by hand count, so they don't use extra feed.
+  - You still have to buy feed. If storage runs out, the remaining animals go hungry, as usual.
+  - Animals left outside are counted too, so on grazing days a little feed may be used for them anyway.
+
 ## Status
 
 **Tested in game (on TLE):**
@@ -113,6 +123,7 @@ This patch is based on the optional `FOMT QOL.ips` that comes with **Mentil's [*
 - Fast tool upgrades: an Axe upgraded with Mystrile on a Wednesday was ready the next day.
 - Fast tool XP: four Hammer swings gave 1,000 XP.
 - Self-watering: after one night, all 230 tilled tiles on the test farm were watered.
+- Automatic feeding: 4 chickens and 7 barn animals were fed overnight starting from empty troughs, with feed visible in the troughs the next day.
 
 **Not tested in game yet:**
 
