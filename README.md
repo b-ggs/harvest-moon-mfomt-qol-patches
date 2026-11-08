@@ -159,4 +159,17 @@ This patch is based on the optional `FOMT QOL.ips` that comes with **Mentil's [*
 - **True Love Edition v4.0:** its authors ([kataiki.tumblr.com/FOMT-TL](https://kataiki.tumblr.com/FOMT-TL)).
 - **FoMT Proofread 1.22 by Mentil** ([romhacking.net/hacks/9242](https://www.romhacking.net/hacks/9242/)): its optional QoL patch is the basis for the Grind Reduction patch: the Vacation House price, the cottage after 5 years, and visible mine stairs. If you play the original *Friends of Mineral Town*, use the Proofread itself; it also fixes thousands of text errors.
 
+### Building from source
+
+With [just](https://github.com/casey/just), [uv](https://github.com/astral-sh/uv) and clang/LLVM installed, put the clean ROM and the TLE `.ips` in the repo root, then run:
+
+```
+just                              # TLE + all patches -> build/mfomt-qol.gba
+just rom "hud tweaks ores"        # only some patches
+just apply "hud ores" my.gba      # use the prebuilt .ips files instead (no clang needed)
+just base=clean rom               # without True Love Edition
+```
+
+Patch names: `hud`, `tweaks` (Grind Reduction), `basket`, `upgrades`, `toolxp`, `watering`, `feeding`, `affection`, `ores`.
+
 This repository contains only patches. No ROMs, and no third-party patches. Technical notes for anyone who wants to continue the work are in [`AGENTS.md`](AGENTS.md), and the build scripts are in [`tools/`](tools/).

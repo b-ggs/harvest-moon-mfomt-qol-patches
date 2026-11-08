@@ -140,7 +140,17 @@ QoL patches for **Harvest Moon: More Friends of Mineral Town (USA)** with **True
 - Two patches must never hook the same instruction. If two features need the same hook site, hook different instructions, or ask the user whether to merge them.
 - Ship as `MFoMT <Feature> (apply after TLE v4.0).ips`, and add it to the README's file table and features.
 
-Run the scripts from a scratch dir holding copies of `tools/*.py` and `tle.gba` (clean MFoMT + the TLE ips, made with `applyips.py`).
+**Use the `Justfile`** (`just --list`). It runs everything in `build/`, straight from `tools/`:
+- `just` / `just rom ["hud ores …"] [out.gba]`: build from source; TLE + the chosen patches → `build/mfomt-qol.gba`.
+- `just ship`: rebuild and copy every `.ips` to the repo root under its published name.
+- `just test`: rebuild `test/test.gba` (leaves `test.sav` alone).
+- `just apply ["…"] [out.gba]`: apply the shipped `.ips` files without the toolchain.
+- `just base=clean rom`: build against the unmodified game. All scripts' asserts pass there too.
+- Patch names: hud tweaks basket upgrades toolxp watering feeding affection ores. `just rom "hud tweaks basket"` reproduces the user's current playing ROM byte for byte.
+
+When adding a patch, add it to the Justfile (`all`, the `ips` loop, the `rom`/`apply` case statements, and `ship`).
+
+Manual steps (what the Justfile does): run the scripts from a dir holding `tle.gba` (clean MFoMT + the TLE ips, made with `applyips.py`). Scripts import `ipslib` from their own dir and write outputs to the cwd.
 
 1. `uv run python build.py` writes `stamina.ips` (HUD, fatigue, clock speed, key filter).
 2. `uv run python tweaks.py` writes `tweaks.ips` (grind reduction). `uv run python basket.py` writes `basket.ips`. `uv run python upgrades.py` writes `upgrades.ips`. `uv run python toolxp.py` writes `toolxp.ips`. `uv run python watering.py` writes `watering.ips`. `uv run python feeding.py` writes `feeding.ips`. `uv run python affection.py` writes `affection.ips`. `uv run python ores.py` writes `ores.ips`.
