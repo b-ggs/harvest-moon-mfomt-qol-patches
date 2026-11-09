@@ -13,6 +13,7 @@ Each feature set is its own patch, so you can pick any combination:
 - **Automatic Animal Feeding:** troughs in the barn and coop are filled from storage every night.
 - **Faster Animal Affection:** animals gain affection 5× faster.
 - **Rare Ore Boost:** rare ores and jewels drop about twice as often in both mines.
+- **More Lumber:** branches and stumps give 10× the lumber.
 
 ## What you need
 
@@ -28,6 +29,7 @@ Each feature set is its own patch, so you can pick any combination:
 | `MFoMT Automatic Animal Feeding (apply after TLE v4.0).ips` | This repository |
 | `MFoMT Faster Animal Affection (apply after TLE v4.0).ips` | This repository |
 | `MFoMT Rare Ore Boost (apply after TLE v4.0).ips` | This repository |
+| `MFoMT More Lumber (apply after TLE v4.0).ips` | This repository |
 | `Harvest Moon - MFoMT (True Love Edition v4.0).ips` *(optional)* | [kataiki.tumblr.com/FOMT-TL](https://kataiki.tumblr.com/FOMT-TL) |
 | An IPS patcher | [Rom Patcher JS](https://www.marcrobledo.com/RomPatcher.js/) runs in the browser. [Floating IPS (Flips)](https://github.com/Alcaro/Flips) is a desktop app. |
 
@@ -131,6 +133,11 @@ This patch is based on the optional `FOMT QOL.ips` that comes with **Mentil's [*
 - **In the Lake Mine, the rarer jewels are about twice as common:** Kappa Jewel, Pink Diamond, Alexandrite, Moon Stone, Sand Rose, Diamond and Emerald.
   - They still appear on the same floors as usual. The common gems (Ruby, Topaz, Peridot, Fluorite, Agate, Amethyst) keep their chances, except on the deepest floors, where they make room.
 
+### More Lumber patch
+
+- **Chopping with the Axe gives 10× the lumber:** a branch gives 10 instead of 1, and a stump gives 60 instead of 6.
+  - Lumber still caps at 999, and buying lumber from the carpenter is unchanged.
+
 ## Status
 
 **Tested in game (on TLE):**
@@ -143,6 +150,7 @@ This patch is based on the optional `FOMT QOL.ips` that comes with **Mentil's [*
 - Self-watering: after one night, all 230 tilled tiles on the test farm were watered.
 - Automatic feeding: 4 chickens and 7 barn animals were fed overnight starting from empty troughs, with feed visible in the troughs the next day.
 - Faster affection: brushing a cow raised its affection by 5 instead of 1.
+- More Lumber: a branch gave 10 lumber.
 - Rare ore boost: Spring Mine floor 22 had 20 rare-ore rocks out of 30 and no empty ones. The unmodified game averages about 12 rare and 12 empty. Lake Mine floors still generate normally.
 
 **Not tested in game yet:**
@@ -153,6 +161,7 @@ This patch is based on the optional `FOMT QOL.ips` that comes with **Mentil's [*
 - The meter in busy scenes (festivals, cutscenes).
 - Self-watering crops: crop growth over several days (the test save ran into Winter 1).
 - Anything on the original game without TLE.
+- More Lumber: stumps (they need an upgraded Axe).
 
 ## Credits
 

@@ -18,7 +18,7 @@ clean_rom := "Harvest Moon - More Friends of Mineral Town (USA).gba"
 tle_ips   := "Harvest Moon - MFoMT (True Love Edition v4.0).ips"
 base      := "tle"
 build     := "build"
-all       := "hud tweaks basket upgrades toolxp watering feeding affection ores"
+all       := "hud tweaks basket upgrades toolxp watering feeding affection ores lumber"
 
 # patch name -> build script, script output, published file
 # hud       tools/build.py      stamina.ips    MFoMT Stamina HUD
@@ -30,6 +30,7 @@ all       := "hud tweaks basket upgrades toolxp watering feeding affection ores"
 # feeding   tools/feeding.py    feeding.ips    MFoMT Automatic Animal Feeding
 # affection tools/affection.py  affection.ips  MFoMT Faster Animal Affection
 # ores      tools/ores.py       ores.ips       MFoMT Rare Ore Boost
+# lumber    tools/lumber.py     lumber.ips     MFoMT More Lumber
 
 default: rom
 
@@ -51,7 +52,7 @@ ips: base-rom
     #!/usr/bin/env bash
     set -euo pipefail
     cd {{build}}
-    for script in build tweaks basket upgrades toolxp watering feeding affection ores; do
+    for script in build tweaks basket upgrades toolxp watering feeding affection ores lumber; do
         echo "== $script"
         uv run python ../tools/$script.py
     done
@@ -64,7 +65,7 @@ rom patches=all out=(build / "mfomt-qol.gba"): ips
     for p in {{patches}}; do
         case $p in
             hud) list+=(stamina.ips) ;;
-            tweaks|basket|upgrades|toolxp|watering|feeding|affection|ores) list+=("$p.ips") ;;
+            tweaks|basket|upgrades|toolxp|watering|feeding|affection|ores|lumber) list+=("$p.ips") ;;
             *) echo "unknown patch: $p (known: {{all}})"; exit 1 ;;
         esac
     done
@@ -79,7 +80,7 @@ ship: ips
     #!/usr/bin/env bash
     set -euo pipefail
     cd {{build}}
-    uv run python ../tools/stack.py stamina.ips tweaks.ips basket.ips upgrades.ips toolxp.ips watering.ips feeding.ips affection.ips ores.ips
+    uv run python ../tools/stack.py stamina.ips tweaks.ips basket.ips upgrades.ips toolxp.ips watering.ips feeding.ips affection.ips ores.ips lumber.ips
     cp stamina.ips   "../MFoMT Stamina HUD (apply after TLE v4.0).ips"
     cp tweaks.ips    "../MFoMT Grind Reduction (apply after TLE v4.0).ips"
     cp basket.ips    "../MFoMT Free Basket (apply after TLE v4.0).ips"
@@ -89,7 +90,8 @@ ship: ips
     cp feeding.ips   "../MFoMT Automatic Animal Feeding (apply after TLE v4.0).ips"
     cp affection.ips "../MFoMT Faster Animal Affection (apply after TLE v4.0).ips"
     cp ores.ips      "../MFoMT Rare Ore Boost (apply after TLE v4.0).ips"
-    echo "shipped 9 patches"
+    cp lumber.ips    "../MFoMT More Lumber (apply after TLE v4.0).ips"
+    echo "shipped 10 patches"
 
 # Rebuild and refresh the test ROM (test/test.gba; test.sav is left alone).
 test: (rom all "test/test.gba")
@@ -105,7 +107,7 @@ apply patches=all out=(build / "mfomt-qol.gba"): base-rom
             basket) n="Free Basket" ;;           upgrades) n="Fast Tool Upgrades" ;;
             toolxp) n="Fast Tool XP" ;;          watering) n="Self-Watering Crops" ;;
             feeding) n="Automatic Animal Feeding" ;; affection) n="Faster Animal Affection" ;;
-            ores) n="Rare Ore Boost" ;;
+            ores) n="Rare Ore Boost" ;;          lumber) n="More Lumber" ;;
             *) echo "unknown patch: $p (known: {{all}})"; exit 1 ;;
         esac
         uv run python tools/applyips.py "MFoMT $n (apply after TLE v4.0).ips" "{{out}}.tmp" "{{out}}.tmp"

@@ -17,7 +17,8 @@ QoL patches for **Harvest Moon: More Friends of Mineral Town (USA)** with **True
 | `MFoMT Automatic Animal Feeding (apply after TLE v4.0).ips` | Barn and coop troughs are filled from storage nightly. |
 | `MFoMT Faster Animal Affection (apply after TLE v4.0).ips` | Positive affection gains ×5. |
 | `MFoMT Rare Ore Boost (apply after TLE v4.0).ips` | Spring Mine rare ores and Lake Mine rare jewels roughly ×2. |
-| `Harvest Moon - MFoMT (TLE v4.0 + Stamina HUD).gba` / `.sav` | The ROM the user plays (TLE + HUD + grind reduction; the filename was kept so the save stays linked) and **the user's real save**. Never overwrite the `.sav`; copy it for testing. |
+| `MFoMT More Lumber (apply after TLE v4.0).ips` | Branches and stumps give ×10 lumber. |
+| `Harvest Moon - MFoMT (TLE v4.0 + Stamina HUD).gba` / `.sav` | The ROM the user plays (TLE + HUD + grind reduction + free basket + more lumber, since 2026-11-09; the filename was kept so the save stays linked) and **the user's real save**. Never overwrite the `.sav`; copy it for testing. |
 | `….ss1` / `….ss2`, `Harvest Moon - More Friends of Mineral Town (USA).sav` | The user's mGBA save states and a save for the clean ROM. Keep them; copy before loading for debugging. |
 | `test/test.gba` + `test/test.sav` | Test copy: TLE + all our patches, with a save converted from `harvest-moon-more-friends-of-mineral-town.8984.sps` (SharkPort; the first 32 KB of its payload after a 0x1C-byte header is the `.sav`). The vanilla 2005 save is at Fall 26, Year 1, with 99.9M G, 5 cows, 4 chickens and 3 sheep. Use this for testing instead of the user's real save. Rebuild `test.gba` from `qol.gba` when patches change. |
 | `tools/` | Build and debug scripts (described below). |
@@ -45,6 +46,7 @@ QoL patches for **Harvest Moon: More Friends of Mineral Town (USA)** with **True
 - **Rare ore boost:** in `tools/ores.py`. A data-only rewrite of both mines' weight tables, "more often only" (the user's choice: same floors).
   - Spring Mine: gold..adamantite and mythic ×2. Lake Mine: Kappa Jewel, Pink Diamond, Alexandrite, Moon Stone, Sand Rose, Diamond and Emerald ×2. Room comes from empty rocks, then junk.
   - Verified in game: Spring floor 22 had 30 rocks, 20 rare, 0 empty. Lake floor 1 generates normally (its row has no rare items, so it's unchanged).
+- **More lumber:** in `tools/lumber.py`. ×10 (the user's choice): branch 1 → 10, stump 6 → 60. It rewrites the five `movs r1, #n` immediates before the lumber adder (see Key game facts → Lumber). The whole-field Axe mode keeps its vanilla quirk of +1 per stump (now +10); the user didn't ask to change it. Verified in game (2026-11-09): a branch gave +10. Stumps (+60) not seen yet; they need an upgraded Axe.
 - **Free basket:** in `tools/basket.py`, shipped as its own `.ips`. The Supermarket basket costs 0G instead of 5,000G. Built, but not yet tested by buying it in game.
 
 ## Key game facts (TLE ROM addresses)
@@ -116,6 +118,11 @@ QoL patches for **Harvest Moon: More Friends of Mineral Town (USA)** with **True
   - In-game help text (`0x113F38`): Junk "No particular use"; Copper–Mystrile for tool upgrades; Orichalc for jewelry; Adamantite for Yarn/Cheese/Mayonnaise Makers; gems "Can be shipped and sold."
   - **Ship prices (from FoMT guides, not found in the ROM):** Junk 1G, Copper 15G, Silver 20G, Gold 25G, Mystrile 40G, Orichalc 50G, Adamantite 50G, Mythic Stone 20,000G. The price table/function hasn't been located: no `0x4E20` (20000) literal in code, and no u16/u32 array of these values. The 20000s at `0x107B10` are a shop/crafting table (next to Saibara's "Make Earrings" menu), not ship prices. Sources: harvestmoon.neoseeker.com/wiki/Shippable_Items_(HMFoMT), gamerzenith.com/guides/mining-guide-hmfomt/, fogu.com/hm5/profit/mine_spring.php.
 - **Basket shop script:** `RIFF` at `0x765B94`. Money check at `0x767E3A` and payment at `0x767E91`, both `22 88 13` (5000). Text "Baskets are 5,000G." at `0x767FB6`.
+- **Lumber:** 10-bit count at `G+0x24` (u16 at obj+0x10 with obj = `G+0x14`; the test save has 999). Getter `0x08009B64`, adder `0x08009BD4(obj, n)` = min(count+n, 999), subtract `0x08009C18`. Axe callers pass n as `movs r1, #n` just before the bl:
+  - `0x0801D016` / `0x0801D048`: farm-field cell, normal swing (`0x0801CE68` returns 1 = branch cut, 2 = stump cut): +1 / +6.
+  - `0x08017714` / `0x08017708`: map objects `0x12` / `0x15` (`0x08017654`, called from 3 axe paths): +1 / +6. (`0x13`/`0x14` there are hammer objects.)
+  - `0x0801D18E`: whole-field mode (`0x0801D13C` with r1 == 2, no direct BL callers) loops all 43×25 cells through `0x0800A3AC(cell, power)` (0 nothing, 1 branch `0x17` cleared, 2 stump `0x1B`–`0x1E` cleared, 3 stump hit) and gives +1 for 1 or 2.
+  - Others: `0x08089EA2` (buying lumber, variable n) and `0x0804AF64` (a transfer). Field cell object kind is bits 8–11 nonzero and bits 2–7 of byte0 the object id.
 - **Money:** the RAM location hasn't been found yet. FoMT used a fixed `0x02004080`; in MFoMT it's probably G-relative, like stamina. Find it by searching G for the balance the Property screen shows (Select), then confirm with a write watchpoint while buying something. The 100M/10M literals at `0x1FB34`/`0x2AFD4` are number-formatting constants. An "infinite money" plan was written up (either force the maximum each frame from the HUD hook, or make the pay routine a no-op behind an L+Start toggle); the user declined it (2026-11-08).
 - **Text speed:** the user dropped this (2026-11-08). For reference: dialog glyphs are drawn into an EWRAM buffer (`0x0203B718` in one session) and DMA'd to OBJ VRAM, so VRAM watchpoints don't fire. Watch the RAM buffer instead.
 - **Stamina is not at a fixed address.** The game-state block is heap-allocated. `0x02004205` only happened to work in one session.
@@ -162,16 +169,16 @@ QoL patches for **Harvest Moon: More Friends of Mineral Town (USA)** with **True
 - `just test`: rebuild `test/test.gba` (leaves `test.sav` alone).
 - `just apply ["…"] [out.gba]`: apply the shipped `.ips` files without the toolchain.
 - `just base=clean rom`: build against the unmodified game. All scripts' asserts pass there too.
-- Patch names: hud tweaks basket upgrades toolxp watering feeding affection ores. `just rom "hud tweaks basket"` reproduces the user's current playing ROM byte for byte.
+- Patch names: hud tweaks basket upgrades toolxp watering feeding affection ores lumber. `just rom "hud tweaks basket lumber"` reproduces the user's current playing ROM byte for byte.
 
 When adding a patch, add it to the Justfile (`all`, the `ips` loop, the `rom`/`apply` case statements, and `ship`).
 
 Manual steps (what the Justfile does): run the scripts from a dir holding `tle.gba` (clean MFoMT + the TLE ips, made with `applyips.py`). Scripts import `ipslib` from their own dir and write outputs to the cwd.
 
 1. `uv run python build.py` writes `stamina.ips` (HUD, fatigue, clock speed, key filter).
-2. `uv run python tweaks.py` writes `tweaks.ips` (grind reduction). `uv run python basket.py` writes `basket.ips`. `uv run python upgrades.py` writes `upgrades.ips`. `uv run python toolxp.py` writes `toolxp.ips`. `uv run python watering.py` writes `watering.ips`. `uv run python feeding.py` writes `feeding.ips`. `uv run python affection.py` writes `affection.ips`. `uv run python ores.py` writes `ores.ips`.
-3. `uv run python stack.py stamina.ips tweaks.ips basket.ips upgrades.ips toolxp.ips watering.ips feeding.ips affection.ips ores.ips …` checks that no two patches write the same byte (so any subset in any order gives the same result) and writes `qol.gba` (TLE + all of them).
-4. Ship: copy `stamina.ips` → `MFoMT Stamina HUD (apply after TLE v4.0).ips`, `tweaks.ips` → `MFoMT Grind Reduction (apply after TLE v4.0).ips`, `basket.ips` → `MFoMT Free Basket (apply after TLE v4.0).ips`, `upgrades.ips` → `MFoMT Fast Tool Upgrades (apply after TLE v4.0).ips`, `toolxp.ips` → `MFoMT Fast Tool XP (apply after TLE v4.0).ips`, `watering.ips` → `MFoMT Self-Watering Crops (apply after TLE v4.0).ips`, `feeding.ips` → `MFoMT Automatic Animal Feeding (apply after TLE v4.0).ips`, `affection.ips` → `MFoMT Faster Animal Affection (apply after TLE v4.0).ips`, `ores.ips` → `MFoMT Rare Ore Boost (apply after TLE v4.0).ips`, and `qol.gba` → `Harvest Moon - MFoMT (TLE v4.0 + Stamina HUD).gba`. Keep that ROM filename so the user's `.sav` stays linked. Ask the user to save first.
+2. `uv run python tweaks.py` writes `tweaks.ips` (grind reduction). `uv run python basket.py` writes `basket.ips`. `uv run python upgrades.py` writes `upgrades.ips`. `uv run python toolxp.py` writes `toolxp.ips`. `uv run python watering.py` writes `watering.ips`. `uv run python feeding.py` writes `feeding.ips`. `uv run python affection.py` writes `affection.ips`. `uv run python ores.py` writes `ores.ips`. `uv run python lumber.py` writes `lumber.ips`.
+3. `uv run python stack.py stamina.ips tweaks.ips basket.ips upgrades.ips toolxp.ips watering.ips feeding.ips affection.ips ores.ips lumber.ips …` checks that no two patches write the same byte (so any subset in any order gives the same result) and writes `qol.gba` (TLE + all of them).
+4. Ship: copy `stamina.ips` → `MFoMT Stamina HUD (apply after TLE v4.0).ips`, `tweaks.ips` → `MFoMT Grind Reduction (apply after TLE v4.0).ips`, `basket.ips` → `MFoMT Free Basket (apply after TLE v4.0).ips`, `upgrades.ips` → `MFoMT Fast Tool Upgrades (apply after TLE v4.0).ips`, `toolxp.ips` → `MFoMT Fast Tool XP (apply after TLE v4.0).ips`, `watering.ips` → `MFoMT Self-Watering Crops (apply after TLE v4.0).ips`, `feeding.ips` → `MFoMT Automatic Animal Feeding (apply after TLE v4.0).ips`, `affection.ips` → `MFoMT Faster Animal Affection (apply after TLE v4.0).ips`, `ores.ips` → `MFoMT Rare Ore Boost (apply after TLE v4.0).ips`, `lumber.ips` → `MFoMT More Lumber (apply after TLE v4.0).ips`, and `qol.gba` → `Harvest Moon - MFoMT (TLE v4.0 + Stamina HUD).gba`. Keep that ROM filename so the user's `.sav` stays linked. Ask the user to save first.
 
 ## Tooling and gotchas
 
@@ -251,7 +258,7 @@ Our `.ips` files (HUD, grind reduction, and free basket) also apply to clean MFo
 5. ~~Self-watering crops~~: done (`tools/watering.py`).
 6. ~~Automatic animal feeding~~: done (`tools/feeding.py`).
 
-Each one ships as its own `.ips` (see Build pipeline). Approach: find each value with a write watchpoint while the user does the action once, then patch the code that changes it. Ideas that were offered but not picked: villager friendship ×2, faster construction and crop growth, lumber, stamina costs, shops open every day, a shipping-price multiplier, accurate forecasts, faster fishing, no animal sickness, and others.
+Each one ships as its own `.ips` (see Build pipeline). Approach: find each value with a write watchpoint while the user does the action once, then patch the code that changes it. Ideas that were offered but not picked: villager friendship ×2, faster construction and crop growth, stamina costs, shops open every day, a shipping-price multiplier, accurate forecasts, faster fishing, no animal sickness, and others.
 
 ## Open items
 
