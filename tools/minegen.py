@@ -1,8 +1,8 @@
 # Runs the game's own mine floor generator (0x080A20BC) in unicorn for every floor of both
 # mines and checks the mine-stairs hook (tweaks.py): stairs up directly above the arrival
 # tile, stairs down directly below, no hidden stairs left, everything inside the room.
-# Floors without stairs down after the hook had no hidden stairs to begin with (floor 255,
-# some Lake Mine rolls); the hook leaves those alone, so they're counted, not failed.
+# Every floor with stairs up must get the column, even if it rolled no hidden stairs (about
+# 1% of small Spring Mine floors, many Lake Mine rolls); floor 255 (the bottom) is left alone.
 # Run from build/: uv run --with unicorn python ../tools/minegen.py [rom] [first] [last] [seeds]
 # About 4 ms per floor (all 256 floors x 2 mines x 10 seeds: ~20 s).
 import struct, sys, time
@@ -48,7 +48,8 @@ for mine in (0, 1):
             if f == 0:                                      # no stairs up: one revealed stairs down
                 if len(downs) != 1 or hidden: bad.append((mine, f, hex(seed), 'floor 0', len(downs), hidden))
                 continue
-            if not downs and not hidden:
+            if f == 255:                                    # bottom floor: left as generated
+                if downs: bad.append((mine, f, hex(seed), 'floor 255 has stairs down'))
                 untouched.append((mine, f)); continue
             h, w = H.get(mtype, 6), W.get(mtype, 13)
             if not (ups == [(py - 1) * 28 + px] and downs == [(py + 1) * 28 + px] and t[py * 28 + px] & 15 == 0
@@ -56,6 +57,6 @@ for mine in (0, 1):
                 bad.append((mine, f, hex(seed), mtype, (px, py), [(i % 28, i // 28) for i in ups + downs], hidden))
 dt = time.time() - t0
 print(f'{n} floors in {dt:.1f}s ({dt / n * 1000:.1f} ms/floor); failures: {len(bad)}; '
-      f'no hidden stairs to reveal (left alone): {len(untouched)}, e.g. {sorted(set(untouched))[:6]}')
+      f'floor 255 left alone: {len(untouched)}, e.g. {sorted(set(untouched))[:6]}')
 for b in bad[:20]: print(b)
 sys.exit(1 if bad else 0)

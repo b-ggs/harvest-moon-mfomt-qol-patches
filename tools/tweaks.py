@@ -41,7 +41,10 @@ for a in TEXT:
 # Floors with stairs up: stairs up directly above the player's arrival tile and stairs down
 # directly below it. The generator returns the arrival tile (x, y bytes at sp+0x30) to its
 # callers (0x080162aa/0x080166ac place the player there), so the hook rewrites it.
+# This happens on every floor with stairs up except 255, even when the floor rolled no hidden
+# stairs (about 1% of small Spring Mine floors do, which leaves no way down in vanilla).
 # Floor 0 (no stairs up): reveal the hidden stairs closest to the entrance.
+# (r4 counts hidden stairs; the reveal path finds none and leaves the floor alone.)
 # Hook the end of the floor generator (0x080A20BC). At 0x080A22D8 r6 = map struct,
 # tiles at r6+4: 28x28 halfwords, 56 bytes/row. bits0-3 type (2 down, 3 up, 4 rock),
 # byte1 bits2-7 buried item (1 = hidden stairs, 2 gold, 3 power berry ...).
@@ -84,10 +87,11 @@ scan:
 2:
     subs r2, #2
     bpl  scan
-    cmp  r4, #0              @ no hidden stairs -> not a normal floor, leave it
-    beq  orig
     cmp  r5, #0
     blt  reveal              @ no stairs up (floor 0: you walk in) -> reveal a real hidden stairs
+    mov  r0, r8              @ floor number (generator arg r3, still in r8 here)
+    cmp  r0, #255
+    beq  orig                @ bottom floor: no stairs down, leave it as is
     lsrs r3, r5, #1          @ tile index -> x (r3), y (r2)
     movs r2, #0
 3:
