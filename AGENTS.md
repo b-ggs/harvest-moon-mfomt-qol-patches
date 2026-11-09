@@ -98,7 +98,23 @@ QoL patches for **Harvest Moon: More Friends of Mineral Town (USA)** with **True
   - Contents go in tile bits 4–9 and equal material id − 5. Codes at `0x0810CCBC`: `0x0A` ? (material `0x0F`, 50/256 on floor 255), `0x20` Harvest Goddess Jewel, `0x0C` junk, `0x0D` copper, `0x0E` silver, `0x0F` gold, `0x10` mystrile, `0x11` orichalc, `0x12` adamantite, `0x17` mythic stone.
   - Vanilla: gold from floor 3, mystrile from 6, orichalc/adamantite from 10, mythic 1/256 on rows 18–20.
   - **Pitfall:** I first used the `0x080A25A0` bands for this table (15 rows), which is wrong. Check the row function at the actual read site.
-  - Floor 20 (special) generated about 300 rocks on a 28×28 map.
+  - **Rock count and room size by floor** (generator `0x080A20BC`, `0x080D8B76` is modulo): floor 0 → map type 0, 13×6, 20 rocks; floor % 5 == 0 → type 1, 28×28, **300 rocks**; else floor % 3 == 0 → type 2, 13×14, 100 rocks; else type 3, 13×6, 30 rocks. (Lake Mine floor 9 → type 4, 40 rocks.) The rock count goes to the filler in r2. Seen in game: floor 20 had about 300 rocks, floor 22 had 30.
+  - **Spring Mine weights per row** (out of 256; the rest are empty rocks). Columns: `0x0A`?, HG Jewel, junk, Cu, Ag, Au, Mys, Ori, Ada, Mythic. Vanilla TLE → with `ores.ips`:
+    - floors 0–2: 0 0 50 50 25 0 0 0 0 0 (unchanged)
+    - 3–4: 0 0 40 50 25 25 0 0 0 0 → Au 50. 5: Ag 50, Au 25 → 50. 6–7: Mys 25 → 50, Au → 50.
+    - 8–9: 0 0 20/10 50 50 50 25 0 0 0 → 0 0 5 50 50 100 50 0 0 0
+    - 10: 0 0 10 25 25 25 25 25 25 0 → 0 0 5 25 25 50 50 50 50 0
+    - 11–19: 0 0 5 50 50 50 50 25 25 0 → 0 0 0 25 25 68 68 34 34 0
+    - **20, 30, 40:** 0 0 5 25 25 25 25 50 50 0 → 0 0 0 12 12 38 38 **77 77** 0 (best Ori/Ada odds anywhere)
+    - 21–29, 31–39, 41–230: 0 0 5 25 25 25 25 25 25 0 → 0 0 5 25 25 50 50 50 50 0
+    - special floors: 0 10 5 25 25 25 25 25 25 1 → 0 10 0 22 22 49 49 49 49 2
+    - 231–254: Mythic 1 → 2 (Ori/Ada 50). 255: `0x0A` 50, Mythic 1 → 2, Ori/Ada 44.
+  - Best floor for Orichalc + Adamantite: **20** (300 rocks × 154/256 ≈ 180 per visit with the patch); 30 and 40 are the same, nothing deeper is better. Earliest Mythic Stone floor: 60 (special, and a 300-rock floor). Guides say Mythic Stones only appear after all the cursed tools are blessed; nothing in the rock table checks that, so if true the gate is elsewhere (not verified).
+- **Materials (ores, gems, wool, yarn…):**
+  - Table at `0x080F8648`, 12 bytes per material id (0x00–0x69): name pointer, u32 icon/sprite index (not a price), description pointer. Accessors: name `0x0800DFCC`, icon `0x0800DFF8`, description `0x0800E044`.
+  - Shippable check `0x0800E024`: everything except ids `0x25`–`0x27` (Harvest Goddess Jewel, Kappa Jewel, Jewel of Truth) and `0x63`–`0x68`. So ores can be shipped.
+  - In-game help text (`0x113F38`): Junk "No particular use"; Copper–Mystrile for tool upgrades; Orichalc for jewelry; Adamantite for Yarn/Cheese/Mayonnaise Makers; gems "Can be shipped and sold."
+  - **Ship prices (from FoMT guides, not found in the ROM):** Junk 1G, Copper 15G, Silver 20G, Gold 25G, Mystrile 40G, Orichalc 50G, Adamantite 50G, Mythic Stone 20,000G. The price table/function hasn't been located: no `0x4E20` (20000) literal in code, and no u16/u32 array of these values. The 20000s at `0x107B10` are a shop/crafting table (next to Saibara's "Make Earrings" menu), not ship prices. Sources: harvestmoon.neoseeker.com/wiki/Shippable_Items_(HMFoMT), gamerzenith.com/guides/mining-guide-hmfomt/, fogu.com/hm5/profit/mine_spring.php.
 - **Basket shop script:** `RIFF` at `0x765B94`. Money check at `0x767E3A` and payment at `0x767E91`, both `22 88 13` (5000). Text "Baskets are 5,000G." at `0x767FB6`.
 - **Money:** the RAM location hasn't been found yet. FoMT used a fixed `0x02004080`; in MFoMT it's probably G-relative, like stamina. Find it by searching G for the balance the Property screen shows (Select), then confirm with a write watchpoint while buying something. The 100M/10M literals at `0x1FB34`/`0x2AFD4` are number-formatting constants. An "infinite money" plan was written up (either force the maximum each frame from the HUD hook, or make the pay routine a no-op behind an L+Start toggle); the user declined it (2026-11-08).
 - **Text speed:** the user dropped this (2026-11-08). For reference: dialog glyphs are drawn into an EWRAM buffer (`0x0203B718` in one session) and DMA'd to OBJ VRAM, so VRAM watchpoints don't fire. Watch the RAM buffer instead.
