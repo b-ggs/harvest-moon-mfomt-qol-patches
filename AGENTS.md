@@ -198,7 +198,7 @@ Manual steps (what the Justfile does): run the scripts from a dir holding `tle.g
 
 - The `.bps` text patches (JP-names or Natsume-names variants) have source CRC `0x8e923168`, which is **FoMT**. They can't be ported to MFoMT in any practical way: the script differs (female protagonist, different characters), and TLE also changes text.
 - The optional `FOMT QOL.ips` (also FoMT-only) has three gameplay tweaks that *could* be ported to MFoMT+TLE by finding the matching code. The author's notes (`hmmt proofread raw notes.txt`) give the FoMT addresses:
-  - Mines below level 0: the stairs down are always visible, placed one square down-right of the stairs up. Floor tile `$0200` = visible stairs, `$0004` = hidden stairs.
+  - Mines below level 0: the stairs down are always visible, placed one square down-right of the stairs up (our port now uses a vertical up / player / down column instead). Floor tile `$0200` = visible stairs, `$0004` = hidden stairs.
     - FoMT IPS records: a trampoline at ROM `0x09D150` (`ldr r1,[pc]; bx r1` to `0x0875C245`), 104 bytes of new code at `0x75C244`, and a 1-byte change at `0x093D88`.
   - Vacation house price: 100M becomes 2.5M. In FoMT the price is at ROM `0x0FF738` (`00e1f505` becomes `a0252600`).
     - ROM `0x0FF544` rewrites the price text "100,000,000G" in the building menu.
@@ -227,15 +227,16 @@ The user chose to stay on MFoMT+TLE and port all three tweaks. The patch stacks 
   - Tile halfwords are at `r6+4`, 28×28, 56 bytes per row:
     - bits 0–3: type (0 clear, 1 tilled, 2 stairs down, 3 stairs up, 4 rock)
     - bits 4–9: rock contents (material id − 5; see "Mine rock contents")
-    - bits 8–9: preserved by the generator, meaning unknown
+    - the generator's init (`0x080A20FA`…) zeroes the type, bits 4–9 and the buried item of every tile
     - byte1 bits 2–7: buried item (1 hidden stairs, 2 gold, 3 power berry, 0xC junk, 0x10 mithril …)
-  - The hook acts only if the floor has hidden stairs. With a stairs-up tile (not on the right edge), it puts stairs down at up+58 bytes (one row down, one tile right), keeping bits 8–9.
-  - **Floor 0 has no stairs-up tile** (you walk in through the entrance). Verified in RAM: 14 hidden stairs, 20 rocks, a 12×6 room at the top-left of the buffer. In that case, or when the stairs up sit on the edge, the hook reveals the bottom-most hidden stairs on open ground (type 0), the one closest to the entrance. Nothing is lost there.
+  - **Arrival tile:** on floors ≠ 0 the generator puts the stairs up at (1+rand(w−2), 1+rand(h−2)) and the player on a random orthogonal neighbour, stored as x, y bytes at `sp+0x30` and copied to the caller's out pointer (`r0`). The Spring/Lake callers (`0x080162aa` / `0x080166ac`) place the player there (pixel x·16+0x18, y·16+0x40). Room size by map type `[r6]` (`0x080A2A2C`/`0x080A2A40`): 1 → 28×28, 2 → 13×14, else 13×6. The whole w×h room is floor.
+  - The hook acts only if the floor has hidden stairs. With a stairs-up tile it lays out a column (the user's request, 2026-11-09): stairs up at (x, y), player at (x, y+1) (rock removed, buried item kept), stairs down at (x, y+2), and rewrites `sp+0x30`. If y > h−3, the stairs up move up to row h−3. Tests: `tools/minegen.py` runs the game's real generator in unicorn for floors 0–255 of both mines × 10 seeds (5120 floors, ~20 s; it needs a BIOS Div `swi 6` handler) and fails on unmodified TLE; `tools/stairtest.py` checks the hook alone on 1200 synthetic floors. Floor 255 and some Lake Mine rolls have no hidden stairs even in vanilla, so they're left alone.
+  - **Floor 0 has no stairs-up tile** (you walk in through the entrance). Verified in RAM: 14 hidden stairs, 20 rocks, a 12×6 room at the top-left of the buffer. In that case the hook reveals the bottom-most hidden stairs on open ground (type 0), the one closest to the entrance. Nothing is lost there.
   - Either way, it then clears only the tiles whose buried item is 1.
   - Floor 0 was verified live: after re-entering, one visible staircase and no hidden ones.
   - Map location: `G + 0x2E94` (tiles at +4), with `G = [[0x0300040C]+4]`. `tools/mapdump.py` prints it over GDB.
   - **FoMT's version had a bug:** it used `byte1 &= 0xFB`, which turns buried power berries (3) into gold (2). It also used fixed RAM addresses, which won't work on MFoMT's heap layout.
-  - Tested in unicorn (`tools/minetest.py`), but **not yet in the real game.**
+  - Tested in unicorn (`tools/minetest.py`, `tools/stairtest.py`, `tools/minegen.py`) and in game.
 
 ## Works without TLE (checked 2026-11-09)
 
@@ -255,6 +256,7 @@ Each one ships as its own `.ips` (see Build pipeline). Approach: find each value
 ## Open items
 
 - Check the mine-stairs hook on the Lake Mine and on special floors. Floors 1+ were confirmed by the user, and floor 0 was verified live.
+- The up / player / down column layout (2026-11-09) was checked in mGBA by the user and passes `tools/minegen.py` on every floor of both mines.
 - Debugging the user's situations: they make mGBA save states (Shift+F1/F2 → `.ss1`/`.ss2` next to the ROM). Load copies with `mGBA -g -t state.ssN rom.gba` in the scratchpad, then use `tools/mapdump.py` or dump the OAM. The HUD disappearing after the hot springs or mine was the moving clock tiles; fixed by matching on layout.
 
 - Check OBJ tiles 1004–1023 against busy scenes (town, festivals, mine, cutscenes).

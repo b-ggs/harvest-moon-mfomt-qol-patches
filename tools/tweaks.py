@@ -38,6 +38,10 @@ for a in TEXT:
 
 
 # ---------- 3. Mines: stairs down always visible ----------
+# Floors with stairs up: stairs up directly above the player's arrival tile and stairs down
+# directly below it. The generator returns the arrival tile (x, y bytes at sp+0x30) to its
+# callers (0x080162aa/0x080166ac place the player there), so the hook rewrites it.
+# Floor 0 (no stairs up): reveal the hidden stairs closest to the entrance.
 # Hook the end of the floor generator (0x080A20BC). At 0x080A22D8 r6 = map struct,
 # tiles at r6+4: 28x28 halfwords, 56 bytes/row. bits0-3 type (2 down, 3 up, 4 rock),
 # byte1 bits2-7 buried item (1 = hidden stairs, 2 gold, 3 power berry ...).
@@ -84,21 +88,53 @@ scan:
     beq  orig
     cmp  r5, #0
     blt  reveal              @ no stairs up (floor 0: you walk in) -> reveal a real hidden stairs
-    lsrs r3, r5, #1          @ tile index -> x
+    lsrs r3, r5, #1          @ tile index -> x (r3), y (r2)
+    movs r2, #0
 3:
     cmp  r3, #28
     blt  4f
     subs r3, #28
+    adds r2, #1
     b    3b
 4:
-    cmp  r3, #27             @ right edge: no square to the lower right
-    beq  reveal
-    adds r3, r5, #0
-    adds r3, #58             @ one row down, one right
-    ldr  r2, =0x61e
-    cmp  r3, r2
-    bhi  reveal
-    b    place
+    ldr  r0, [r6]            @ room height by map type (0x080A2A40): 1 -> 28, 2 -> 14, else 6
+    movs r4, #6
+    cmp  r0, #1
+    bne  6f
+    movs r4, #28
+6:
+    cmp  r0, #2
+    bne  7f
+    movs r4, #14
+7:
+    subs r4, #3              @ last row the stairs up can use with two rows below it
+    cmp  r2, r4
+    ble  8f
+    ldrb r0, [r1, r5]        @ too low: drop the old stairs up (type -> 0) and use row h-3
+    lsrs r0, r0, #4
+    lsls r0, r0, #4
+    strb r0, [r1, r5]
+    adds r2, r4, #0
+8:
+    movs r0, #56
+    muls r0, r2, r0
+    adds r5, r0, r3
+    adds r5, r5, r3          @ (y*28 + x)*2
+    movs r0, #3              @ stairs up at (x, y)
+    strh r0, [r1, r5]
+    adds r5, #56
+    ldrh r0, [r1, r5]        @ player at (x, y+1): no rock, keep any buried item
+    lsrs r0, r0, #10
+    lsls r0, r0, #10
+    strh r0, [r1, r5]
+    adds r5, #56
+    movs r0, #2              @ stairs down at (x, y+2)
+    strh r0, [r1, r5]
+    add  r0, sp, #0x30       @ spawn tile the generator returns to its caller
+    strb r3, [r0]
+    adds r2, #1
+    strb r2, [r0, #1]
+    b    clearhidden
 reveal:
     cmp  r7, #0
     blt  orig
@@ -109,6 +145,7 @@ place:
     ands r2, r4
     adds r2, #2              @ stairs down
     strh r2, [r1, r3]
+clearhidden:
     ldr  r2, =0x61f          @ remove hidden stairs (item 1) everywhere; keep other items
 clear:
     ldrb r3, [r1, r2]

@@ -87,7 +87,7 @@ This patch is based on the optional `FOMT QOL.ips` that comes with **Mentil's [*
 - **The Vacation House costs 2,500,000G** instead of 100,000,000G. The building menu shows the new price.
 - **The mountain cottage arrives after 5 years** of marriage instead of 50. This covers every spouse (8 checks), and the related "50th anniversary" dialog now says "5th".
 - **Visible mine stairs.** On every mine floor, the stairs down are already uncovered.
-  - On floors with stairs up, the stairs down are placed one square down and to the right of them.
+  - On floors with stairs up, you arrive with the stairs up directly above you and the stairs down directly below you.
   - On floor 0, which has no stairs up, the hidden staircase nearest the entrance is revealed.
   - Other buried items aren't affected. This also fixes a bug in the original FoMT patch that turned buried Power Berries into gold.
 
